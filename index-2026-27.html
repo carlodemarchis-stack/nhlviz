@@ -673,6 +673,37 @@ a{color:inherit}
 .lrow img{width:18px;height:18px}
 .lrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lrow.out{opacity:.5}
+/* ---------- the season barcode ----------
+   32 rows by 82 columns: one cell per game, in calendar order. Rows are flex shares of
+   the card, capped so a cell never grows into a slab; columns are equal flex cells. */
+.bc{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}
+.bcconf{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:2px}
+.bcrow{flex:1 1 0;min-height:0;display:grid;align-items:center;gap:8px;
+  grid-template-columns:18px 20px 104px minmax(0,1fr) 30px 64px;font-size:11px;
+  font-variant-numeric:tabular-nums}
+.bcrow img{width:18px;height:18px;object-fit:contain}
+.bcrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bcrow .rk{color:var(--dim);text-align:right}
+.bcrow .pt{text-align:right;font-weight:700}
+.bcrow .rc{text-align:right;color:var(--dim)}
+.bcrow.out{opacity:.5}
+.bcrow.hd{flex:0 0 auto;color:var(--dim);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.bccells{display:flex;gap:1px;height:100%;max-height:17px;min-height:4px}
+.bccells i{flex:1 1 0;min-width:0;border-radius:1.5px;background:rgba(150,166,205,.12)}
+.bccells i.w{background:var(--win)}
+.bccells i.o{background:var(--otl)}
+.bccells i.l{background:var(--loss);opacity:.78}
+/* an overtime or shootout WIN: the same green, with a dark notch so it can be told apart */
+.bccells i.w.x{box-shadow:inset 0 -3px 0 rgba(7,9,16,.55)}
+.bccells i:hover{outline:1.5px solid var(--ink);outline-offset:0;position:relative;z-index:1}
+.bcaxis{position:relative;height:11px}
+.bcaxis span{position:absolute;transform:translateX(-50%);font-size:9px;color:var(--dim);
+  letter-spacing:0;text-transform:none}
+@media (max-width:900px){
+  .bc{overflow-x:auto}
+  .bcrow{min-width:620px;min-height:14px}
+  .bcconf{flex:0 0 auto}
+}
 .lrow.hd{background:none;color:var(--dim);font-size:9px;letter-spacing:.1em;text-align:right}
 .lrow .ldiv{font-style:normal;font-size:9.5px;color:var(--dim);margin-left:6px}
 
@@ -930,7 +961,7 @@ const sgn = n => (n > 0 ? '+' : '') + n;
    at the end: the scoring race, the shot diet and the biggest nights all rank players,
    the ladder ranks teams. */
 const PCHARTS = ['race', 'goalrace', 'astrace', 'gkrace', 'nights', 'volume'];
-const TCHARTS = ['ladder'];
+const TCHARTS = ['barcode', 'ladder'];
 const GOALIES = D.goalies || [];
 
 /* Cover, the skaters, the goalies, the charts that rank players, then the teams and the
@@ -1909,6 +1940,47 @@ function raceBody(kind){
 /* The standings, by conference. The NHL's playoff line is not a position in this table
    -- it is the top three of each division plus two wild cards -- so there is no cut
    line: the teams that made it are in full colour and the rest are dimmed. */
+/* The whole season, one cell per game: every team's results in calendar order, rows in
+   standings order. The alternative to the towers at hockey's 82 games, where a tower's
+   box is ~3px and no single game can be read -- here each one is a hoverable cell. */
+function barcodeCard(){
+  const N = Math.max(...D.teams.map(t => t.games.length));
+  const played = D.teams.some(t => t.games.some(g => g.res));
+  const axis = [1, 10, 20, 30, 40, 50, 60, 70, 80].filter(n => n <= N).concat(N === 80 ? [] : [N])
+    .map(n => `<span style="left:${((n - .5) / N * 100).toFixed(2)}%">${n}</span>`).join('');
+  const block = conf => {
+    const rows = D.teams.filter(t => t.conf === conf)
+      .sort((a, b) => (a.seed || 99) - (b.seed || 99) || b.pts - a.pts || a.city.localeCompare(b.city));
+    return `<div class="bcconf">
+      <div class="bcrow hd"><span></span><span></span><span>${conf}</span>
+        <span class="bcaxis">${axis}</span><span class="pt">Pts</span><span class="rc">W-L-OT</span></div>
+      ${rows.map(t => `<div class="bcrow${played && !t.po ? ' out' : ''}">
+        <span class="rk">${t.seed || ''}</span>
+        <img src="${crest(t.abbr)}" alt="" loading="lazy">
+        <span class="nm">${tlink(t.abbr, esc(t.nick))}${t.po && t.po.outcome === 'CHAMPIONS'
+          ? '<b style="color:var(--gold)"> ★</b>' : ''}</span>
+        <span class="bccells">${t.games.map((g, i) =>
+          `<i class="${g.res === 'W' ? 'w' + (g.end ? ' x' : '') : g.res === 'OTL' ? 'o' : g.res === 'L' ? 'l' : ''}"
+            data-bc="${t.abbr}:${i}"></i>`).join('')}</span>
+        <span class="pt">${played ? t.pts : ''}</span>
+        <span class="rc">${played ? rec3(t.w, t.l, t.otl) : ''}</span>
+      </div>`).join('')}
+    </div>`;
+  };
+  return `<div class="in">
+    <div class="kick">Chart · the season barcode</div>
+    <h2 style="font-size:clamp(19px,2.2vw,29px);font-weight:700;letter-spacing:-.02em">
+      Every game of ${SEASON}, team by team</h2>
+    <p style="font-size:12px;color:var(--dim);max-width:100ch">One cell per game in the order
+      it was played: <b style="color:var(--win)">win</b>, <b style="color:var(--otl)">overtime or
+      shootout loss</b> (a point), <b style="color:var(--loss)">regulation loss</b>${played ? '' :
+      ', grey still to play'}. A notch at the foot of a win marks one settled in overtime or a
+      shootout. Rows in standings order${played ? '; dimmed teams missed the playoffs' : ''}.
+      Hover a cell for the game.</p>
+    <div class="bc">${block('Eastern')}${block('Western')}</div>
+  </div>`;
+}
+
 function ladderCard(){
   const col = conf => {
     const rows = D.teams.filter(t => t.conf === conf)
@@ -2059,6 +2131,7 @@ film.innerHTML = CARDS.map(c => {
              : c.kind === 'player' ? playerCard(c.p)
              : RACES[c.kind]       ? raceCard(c.kind)
              : c.kind === 'ladder' ? ladderCard()
+             : c.kind === 'barcode' ? barcodeCard()
              : volumeCard();
   return `<section class="card">${body}</section>`;
 }).join('');
@@ -2247,7 +2320,23 @@ function onHover(e){
   clearHl();
   const col = e.target.closest('[data-night]');
   if (col) return showTip(nightTip(D.nights[+col.dataset.night]), e.clientX, e.clientY);
+  const bc = e.target.closest('[data-bc]');
+  if (bc) return showTip(barcodeTip(bc.dataset.bc), e.clientX, e.clientY);
   hideTip();
+}
+
+/* One cell of the season barcode: "ABBR:index" into that team's games. */
+function barcodeTip(key){
+  const [ab, i] = key.split(':'), t = TEAMS[ab] || {}, g = (t.games || [])[+i];
+  if (!g) return '';
+  const before = t.games.slice(0, +i + 1).filter(x => x.res);
+  const pts = before.reduce((n, x) => n + (x.res === 'W' ? 2 : x.res === 'OTL' ? 1 : 0), 0);
+  return `<div class="tdim" style="font-size:10px;letter-spacing:.14em;text-transform:uppercase">
+      Game ${+i + 1} of ${t.games.length}</div>
+    <div class="tnm" style="margin-top:3px">${esc(t.nick)} ${g.ha === 'H' ? 'vs' : '@'} ${esc((TEAMS[g.opp] || {}).nick || g.opp)}</div>
+    <div class="trow">${g.res ? resChip(g.res, g.us, g.them, g.end) : '<span class="tdim">still to play</span>'}</div>
+    <div class="tdim">${WHEN(g.date)}${g.venue ? ' · ' + esc(g.venue) : ''}</div>
+    ${g.res ? `<div class="tdim">${pts} pts after ${before.length} games</div>` : ''}`;
 }
 
 function logHover(e, box){
@@ -2305,7 +2394,7 @@ film.addEventListener('click', e => {
   // The column is a link now, so a click already goes to the card; this is only the
   // touch case, where there is no hover and a tap has to be able to show the panel.
   const col = e.target.closest('[data-night]');
-  if (col || e.target.closest('.loghook')) onHover(e);
+  if (col || e.target.closest('.loghook') || e.target.closest('[data-bc]')) onHover(e);
   else { clearHl(); hideTip(); }
 });
 
@@ -2318,7 +2407,7 @@ function label(i){
   if (c.kind === 'team') return c.t.name;
   if (c.kind === 'player') return `${c.p.name} · no. ${c.p.rank}`;
   return {race:'The scoring race', goalrace:'The goal race', astrace:'The assist race',
-          gkrace:'The goalies', ladder:'The standings', volume:'Shot volume',
+          gkrace:'The goalies', ladder:'The standings', barcode:'The season barcode', volume:'Shot volume',
           nights:'The biggest nights'}[c.kind];
 }
 function section(i){
@@ -2484,6 +2573,7 @@ const INDEX = CARDS.map((c,i) => {
               astrace:'assist race assists leaders passing chart playmakers',
               gkrace:'goalies wins save percentage shutouts vezina chart',
               ladder:'standings table conference chart',
+              barcode:'season barcode every game results grid streaks chart',
               volume:'shot volume attempts shots chart',
               nights:'biggest nights best individual games hat tricks points chart'}[c.kind];
          sub = 'chart'; }
