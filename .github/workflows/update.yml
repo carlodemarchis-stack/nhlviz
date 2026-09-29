@@ -1,0 +1,42 @@
+# Nightly: pull the new nights of the live season, rebuild, validate, publish.
+# The NHL API needs no key and serves any non-default User-Agent, so this runs
+# headless on a GitHub runner. Nothing is committed unless the gate passes.
+name: update-season
+on:
+  schedule:
+    - cron: "30 7 * * *"     # after the late West Coast games have gone final
+    - cron: "0 14 * * *"     # a second pass for anything the league corrected overnight
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: update-season
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SEASON: "2026-27"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pillow
+      - name: Fetch
+        run: |
+          python3 tools/fetch_nhl.py standings $SEASON
+          python3 tools/fetch_nhl.py schedule $SEASON
+          python3 tools/fetch_nhl.py games $SEASON
+          python3 tools/fetch_nhl.py stats $SEASON
+      - name: Build and gate
+        run: |
+          python3 tools/build_cards.py $SEASON
+          python3 tools/fetch_images.py heads $SEASON
+          python3 tools/validate.py $SEASON
+          python3 render.py 2025-26
+      - name: Publish if anything changed
+        run: |
+          git add -A data img *.html
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git -c user.name="nhl-bot" -c user.email="actions@users.noreply.github.com" \
+            commit -m "Update $SEASON through $(date -u +%Y-%m-%d)"
+          git push

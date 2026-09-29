@@ -1,0 +1,2599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NHL Season Film — __SEASON__</title>
+<meta name="description" content="__OGDESC__">
+<link rel="canonical" href="__PAGEURL__">
+<meta name="theme-color" content="#070910">
+
+<!-- Link previews on LinkedIn / X / WhatsApp / Slack. Every URL absolute, and each
+     generated page carries its OWN url, title and description -- render.py fills these
+     per file, so the towers page and the unplayed 2026-27 season do not claim to be the
+     2025-26 film. Bump the ?v= on og.png to bust the caches. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="A Guy With A Scarf">
+<meta property="og:title" content="__OGTITLE__">
+<meta property="og:description" content="__OGDESC__">
+<meta property="og:url" content="__PAGEURL__">
+<meta property="og:image" content="https://nhl.aguywithascarf.com/img/og.png?v=1">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="__OGALT__">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="__OGTITLE__">
+<meta name="twitter:description" content="__OGDESC__">
+<meta name="twitter:image" content="https://nhl.aguywithascarf.com/img/og.png?v=1">
+
+<!-- Read by the AGWAS capture extension at the moment you press the shortcut, and
+     embedded into the PNG as the CTA / Tags / Mentions chunks for the Instagram caption
+     and story card. These are DEFAULTS: updateSocialMeta() rewrites them on every card
+     change, so a capture describes the card you are actually looking at. -->
+<meta name="agwas:title"    content="__OGTITLE__">
+<meta name="agwas:cta"      content="Full interactive NHL experience below">
+<meta name="agwas:mentions" content="nhl">
+<meta name="agwas:tags"     content="nhl dataviz hockey">
+<meta name="agwas:bg"       content="https://nhl.aguywithascarf.com/img/og.png">
+<link rel="icon" href="favicon.svg">
+<style>
+:root{
+  --bg:#070910; --ink:#e8ecf5; --dim:#8b96ad;
+  --pan:rgba(255,255,255,.055); --pan2:rgba(255,255,255,.014);
+  --line:rgba(150,166,205,.14);
+  --acc:#2a9fd8;              /* ice blue — distinct from F1 teal, tennis amber, golf orange,
+                                 NFL steel blue and NBA red */
+  --gold:#f0c24a; --win:#43c07a; --loss:#e0554a;
+  /* Where a point came from: the goal, the primary assist, the secondary one. The
+     trio the NBA film proved against its palette -- clear of win green, loss red and
+     best-night gold -- and teal means GOAL everywhere on this page, rink included. */
+  --goal:#2fd4d0; --a1:#7a5af5; --a2:#e879c4;
+  /* A saved shot: pale ink, not a colour -- it is the default outcome. An overtime
+     loss: amber, between the win green and the loss red because that is its value. */
+  --save:rgba(232,236,245,.62); --otl:#e8a04a;
+  --bar:46px; --ctl:54px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:300;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+b,strong{font-weight:700}
+a{color:inherit}
+
+/* ---------- chrome ---------- */
+#topbar{position:fixed;top:0;left:0;right:0;height:var(--bar);z-index:40;display:flex;
+  align-items:center;gap:14px;padding:0 16px;background:rgba(7,9,16,.9);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);font-size:12px}
+#ctx{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 0}
+#ctx b{color:var(--ink)}
+#pills{display:flex;gap:6px;flex:0 0 auto}
+#pills .pill{text-decoration:none}   /* the strip leads with a link, not a button */
+.seg{display:flex;gap:5px}
+.seg .pill{text-decoration:none}
+.pill{border:1px solid var(--line);background:var(--pan2);color:var(--dim);
+  border-radius:99px;padding:5px 13px;font-size:11.5px;cursor:pointer;letter-spacing:.02em}
+.pill:hover{color:var(--ink);border-color:rgba(150,166,205,.3)}
+.pill.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+#credit{color:var(--dim);flex:1 1 0;text-align:right;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-size:11px}
+#credit a{color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line)}
+#credit a:hover{color:var(--ink)}
+
+#ctlbar{position:fixed;bottom:0;left:0;right:0;height:var(--ctl);z-index:40;display:flex;
+  align-items:center;justify-content:center;gap:8px;background:rgba(7,9,16,.9);
+  backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom)}
+.ic{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+  background:var(--pan2);color:var(--dim);display:grid;place-items:center;cursor:pointer}
+.ic:hover{color:var(--ink);border-color:rgba(150,166,205,.32);background:var(--pan)}
+.ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+#counter{min-width:112px;height:34px;padding:0 14px;border-radius:10px;
+  border:1px solid var(--line);background:var(--pan2);color:var(--dim);cursor:pointer;
+  font:inherit;font-size:12px;font-variant-numeric:tabular-nums}
+#counter:hover{color:var(--ink)}
+#counter b{color:var(--ink)}
+
+/* ---------- film ---------- */
+#film{position:fixed;top:var(--bar);bottom:var(--ctl);left:0;right:0;
+  display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+  scroll-behavior:smooth;scrollbar-width:none}
+#film::-webkit-scrollbar{display:none}
+.card{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;
+  padding:18px 20px;overflow:hidden;
+  /* 90+ full-screen cards is enough render tree to crash mobile Safari; this keeps
+     off-screen cards out of it. Learned the hard way on the PGA film. */
+  content-visibility:auto;contain-intrinsic-size:100vw 80vh}
+.in{height:100%;max-width:1520px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+.kick{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.panel{background:linear-gradient(180deg,var(--pan),var(--pan2));
+  border:1px solid var(--line);border-radius:20px;padding:16px 18px}
+.box{background:var(--pan2);border:1px solid var(--line);border-radius:14px;padding:11px 13px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:8px}
+.k{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.25}
+.v small{font-size:11px;font-weight:300;color:var(--dim)}
+/* A shooting rate is tinted to its pie, so the sign goes with the number rather than
+   staying grey and splitting the figure in two. */
+.v.vg small{color:inherit;opacity:.6}
+/* His best single game for that stat, beside the average it is the peak of.
+   Regular season only -- a six-game playoff max is a different kind of number. */
+.v small.mx{font-size:10px;font-weight:600;letter-spacing:.02em;margin-left:6px;
+  color:rgba(150,166,205,.62)}
+/* playoff-vs-regular-season delta chip: the question a playoff split is actually asked to answer */
+.dlt{font-size:10px;font-weight:600;letter-spacing:.02em;margin-left:5px;vertical-align:2px}
+.dlt.up{color:var(--win)} .dlt.dn{color:var(--loss)} .dlt.fl{color:var(--dim)}
+/* his team played on without him: distinguish a DNP from a team that missed out */
+.pomiss{color:var(--dim);font-size:11.5px;letter-spacing:.02em}
+/* Row label in a value slot: the playoff row mirrors row 1's columns, so the
+   first cell names the row instead of carrying a number. */
+.v.potitle{font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+/* The playoff row is marked in gold, the same gold that foots the playoff bars on the
+   game chart, so the row and the chart read as one idea rather than two decorations. */
+/* The bracket OVERLAYS the box's left border rather than adding to the layout: a real
+   border-left (or a padded wrapper) would push its block inward and knock the KPI
+   columns out of line with the other block. As a pseudo-element it costs no width, so
+   every column lines up across the season and the playoffs.
+   Shape comes from a left border meeting the 14px corners -- it curves at both ends,
+   which is what makes it read as an embrace rather than a rule. */
+.pobar::before,.rsgroup::before{content:'';position:absolute;left:0;top:0;bottom:0;
+  width:14px;border-left:3px solid;border-top-left-radius:14px;
+  border-bottom-left-radius:14px;pointer-events:none}
+.pobar{position:relative;background:rgba(240,194,74,.045)}
+.pobar::before{border-color:var(--gold)}
+.pobar .potitle{color:var(--gold)}
+/* One bracket around BOTH regular-season rows, so the card reads as two blocks --
+   his season, then his playoffs -- not three loose panels. */
+.rsgroup{position:relative;display:flex;flex-direction:column;gap:11px}
+.rsgroup::before{border-color:var(--tc,var(--acc))}
+/* Sits on the box's top line, so it costs no height. */
+.rskick{position:absolute;top:-6px;left:14px;padding:0 6px;background:var(--bg);
+  font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+  line-height:12px;border-radius:3px}
+.rsgroup .box:first-child{position:relative}
+/* A shooting percentage gets a pie of itself beside the number, in the same red / blue /
+   grey the points mix uses, so the three rates are comparable at a glance instead of
+   being three numbers you have to hold in your head. */
+.v.vg{display:flex;align-items:center;gap:7px}
+.pie{width:20px;height:20px;flex:0 0 auto;display:block}
+
+/* ---------- team card ---------- */
+/* Identity and numbers left, the roster right, and the season arc as its own full-width
+   row beneath both -- 82 games in a 63% column made every wobble the same size. */
+.tgrid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:37% 1fr;
+  grid-template-rows:minmax(0,1fr) minmax(0,.4fr);gap:14px}
+/* Fixed shares, not content heights. Sizing row 1 to its content made the roster tiles
+   102px on a team that missed the playoffs and 148px on the champion -- nine different
+   tile sizes across the deck, because the left column grows with each playoff round. A
+   constant share gives every card the same roster geometry and the same arc height, and
+   leaves empty space under the left column for teams with less to say. The share is set
+   by the deepest left column in the deck -- the two sides that went four rounds, which
+   clipped by 2px at a flat .5fr. */
+.tarc{grid-column:1 / -1;min-height:0;display:flex;flex-direction:column}
+.tarc .arcbox{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.tarc .arc{flex:1 1 auto;min-height:0;height:auto}
+.tid{display:flex;flex-direction:column;gap:12px;min-height:0;justify-content:flex-start}
+.tid > *{flex:0 0 auto}
+.thead{display:flex;align-items:center;gap:14px}
+.crest{width:clamp(66px,7vw,96px);height:auto;aspect-ratio:1;flex:0 0 auto;
+  filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+.tname{min-width:0}
+.tcity{font-size:12px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.tnick{font-size:clamp(23px,2.7vw,38px);font-weight:700;line-height:1.02;letter-spacing:-.015em}
+.trec{display:flex;align-items:baseline;gap:10px;margin-top:5px;flex-wrap:wrap}
+.trec .big{font-size:clamp(20px,2.1vw,27px);font-weight:700;font-variant-numeric:tabular-nums}
+.badge{font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:3px 9px;
+  border-radius:99px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.badge.seed{border-color:rgba(42,159,216,.5);color:#9fd6f2;background:rgba(42,159,216,.12)}
+.badge.pts{border-color:rgba(232,236,245,.28);color:var(--ink);font-weight:700}
+.badge.champ{border-color:rgba(240,194,74,.55);color:var(--gold);
+  background:rgba(240,194,74,.13);font-weight:700}
+.tcol{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:hidden}
+
+.tright{display:flex;flex-direction:column;gap:12px;min-height:0}
+.arcwrap{flex:0 0 auto}
+/* The y labels live in a gutter to the LEFT of the plot, not floating over it. They
+   used to sit at left:0 on top of the chart with a fade behind them, which overlapped
+   the first bars and was hard to read. */
+.arcbox{position:relative;width:100%;padding-left:34px}
+.arc{width:100%;height:clamp(118px,16vh,164px);display:block;overflow:visible}
+.arclbl{position:absolute;left:0;width:27px;text-align:right;transform:translateY(-50%);
+  font-size:10px;color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums;
+  pointer-events:none;line-height:1;white-space:nowrap}
+.arclbl.zero{color:#fff;font-weight:700}
+/* The best night's value, ringed, sitting on top of its bar. */
+.logpk{position:absolute;z-index:2;display:grid;place-items:center;
+  min-width:23px;height:23px;padding:0 5px;border-radius:999px;
+  border:1.6px solid currentColor;background:rgba(9,11,18,.88);
+  font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;
+  line-height:1;pointer-events:none}
+.arcpk{position:absolute;font-size:9.5px;font-weight:800;
+  font-variant-numeric:tabular-nums;white-space:nowrap;pointer-events:none;
+  text-shadow:0 1px 3px rgba(9,11,18,.92),0 0 2px rgba(9,11,18,.92)}
+.arcpk.hi{color:var(--win)} .arcpk.lo{color:var(--loss)}
+/* W / L sits on top of each bar. HTML, not <text>, for the same reason the axis labels
+   are: this svg is preserveAspectRatio="none", which stretches glyphs sideways. The
+   wrapper covers exactly the plot -- left:34px is the y-axis gutter, and an absolutely
+   positioned child is placed against the padding box. Neutral colours on purpose: green
+   and red already mean above/below average on this very chart. */
+.wlwrap{position:absolute;left:34px;right:0;top:0;bottom:0;pointer-events:none}
+.wl{position:absolute;transform:translateX(-50%);margin-bottom:2px;font-style:normal;
+  font-size:7.5px;font-weight:700;line-height:1}
+/* Names the divider, just right of it and clear of the top of the plot. Positioned by
+   the same slot fraction as the line itself, so the two cannot drift apart. */
+.polbl{position:absolute;top:1px;margin-left:5px;font-style:normal;font-size:8px;
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);
+  opacity:.85;white-space:nowrap}
+.wl.w{color:#7ce8ae}
+.wl.l{color:#ff9089}
+/* Result and goal nights read as two strips under the plot rather than as labels
+   floating over the bars -- eighty letters and dots at eighty different heights is noise,
+   and at a common baseline the same marks scan as a run. Equal flex cells line up with
+   the svg's columns because that svg is preserveAspectRatio="none", so its column c spans
+   exactly c/N to (c+1)/N of the same width. The playoff gold stays on the bar's own foot,
+   inside the chart, where it marks the bar rather than the night. */
+.gstrips{padding-left:34px;display:flex;flex-direction:column;gap:3px;margin-top:5px}
+/* The label sits in the y-axis gutter, absolutely positioned so it takes no width from
+   the cells -- they have to stay on the bars' own grid. */
+.gstrip{position:relative;display:flex;gap:1px;height:5px}
+/* Not uppercased: the gutter is 35px between the panel padding and the first cell, and
+   "DOUBLES" in caps needs about 34 of them before letter-spacing. Mixed case fits. */
+.glab{position:absolute;left:-34px;width:31px;text-align:right;line-height:5px;
+  font-size:8px;letter-spacing:.01em;
+  color:rgba(150,166,205,.6);white-space:nowrap;pointer-events:none}
+.gstrip i{flex:1 1 0;min-width:0;border-radius:1px;background:transparent}
+.gstrip i.w{background:#7ce8ae}
+.gstrip i.l{background:#ff9089}
+.gstrip i.o{background:var(--otl)}
+.gstrip i.td{background:var(--gold)}
+.gstrip i.dd{background:#c8d2e2}
+/* The lower strip: a gold cell for a hat trick (or a shutout, on a goalie's card),
+   silver for a two-goal game. */
+.wl b{display:block;width:5px;height:5px;border-radius:50%;margin:0 auto 2px}
+.wl b.td{background:var(--gold);box-shadow:0 0 0 1px rgba(7,9,16,.6)}
+.wl b.dd{background:#c8d2e2;box-shadow:0 0 0 1px rgba(7,9,16,.6)}
+/* 82 letters need about 9px of column each before they stop being legible. */
+@media (max-width:1160px){ .wl{display:none} }
+/* One opponent code per game, on the arc's own column grid. Three letters need about
+   13px at this size and a full-width arc gives 18 per game, so they fit at desktop width
+   and are dropped below 1100px rather than rendered as mush. */
+.arcopp{display:flex;gap:1px;padding-left:34px;margin-top:4px}
+.arcopp i{flex:1 1 0;min-width:0;font-style:normal;font-size:6.5px;line-height:1;
+  font-weight:700;text-align:center;letter-spacing:-.02em;white-space:nowrap;overflow:hidden}
+@media (max-width:1100px){ .arcopp{display:none} }
+.arclab{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);
+  margin-top:4px;font-variant-numeric:tabular-nums}
+
+/* One grid for the whole box rather than one per row: `display:contents` on the rows
+   lets the four of them share columns, so the label column sizes to the longest round
+   ("Conference Finals Minnesota Timberwolves") while the scores still line up. A
+   per-row grid could only do that with a hard-coded width, which is what clipped
+   "Conference Fina..." before. */
+.pobox{display:grid;grid-template-columns:auto 42px 1fr;align-items:center;
+  column-gap:9px;row-gap:7px}
+.pobox>.k{grid-column:1/-1}
+.porow{display:contents;font-size:12px}
+.porow .rd{color:var(--dim);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  white-space:nowrap}
+.porow .sc{font-weight:700;font-variant-numeric:tabular-nums}
+.pogames{display:flex;gap:3px}
+.pog{width:15px;height:15px;border-radius:4px;display:grid;place-items:center;
+  font-size:8.5px;font-weight:700;color:#07090f}
+.pog.w{background:var(--win)} .pog.l{background:var(--loss);color:#fff}
+/* won or lost in overtime: a ring, so a series read game by game shows its OT nights */
+.pog.ot{box-shadow:0 0 0 1.5px var(--otl)}
+
+.rost{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.rgrid{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+/* --- squad deck: 18 players as 6 x 3 mini cards ------------------------------- */
+.rhd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;
+  font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.rhd .rhk{font-size:8.5px;opacity:.7;letter-spacing:.06em;align-self:center}
+.rhd .ltabs{align-items:center;gap:2px}
+.rhd .ltab{padding:2px 7px;font-size:8.5px}
+.rdeck{flex:1 1 auto;min-height:0;display:grid;gap:7px;
+  grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}
+.pmini{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  border:1px solid var(--line);border-radius:11px;background:var(--pan2);
+  text-decoration:none;color:inherit;transition:border-color .14s,transform .14s}
+.pmini:hover{border-color:var(--tc);transform:translateY(-2px)}
+/* Portrait sits on a wash of the team's colour; the jersey is the watermark behind it. */
+/* The row is only ~95px tall, so the text rows must not be allowed to shrink --
+   flex:0 0 auto on each, and the portrait takes whatever is left. */
+.pmshot{position:relative;flex:1 1 auto;min-height:0;overflow:hidden}
+.pmshot::before{content:'';position:absolute;inset:0;opacity:.32;
+  background:linear-gradient(180deg,var(--tc) -10%,transparent 78%)}
+/* The portrait fills the tile rather than sitting inside it: cover, anchored to the top
+   so the crop takes from the chest rather than the face. */
+.pmshot img{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:top center}
+/* The averages ride on the photo as translucent pills. A scrim under them, because a
+   pale jersey would otherwise swallow the numbers. */
+/* Three boxes across the foot of the photo, each naming its own stat -- stacked up the
+   left they read as a list of unlabelled numbers, and only the first one said what it
+   was. */
+.pmpills{position:absolute;left:0;right:0;bottom:0;z-index:2;display:grid;
+  grid-template-columns:repeat(3,1fr);gap:3px;padding:16px 5px 5px;
+  background:linear-gradient(180deg,transparent,rgba(7,9,16,.78) 58%)}
+.pmpills b{padding:2px 2px 3px;font-size:10.5px;font-weight:700;text-align:center;
+  line-height:1.05;border-radius:4px;background:rgba(7,9,16,.62);
+  border:1px solid rgba(255,255,255,.14);color:var(--ink);
+  font-variant-numeric:tabular-nums;backdrop-filter:blur(3px)}
+/* The active category, ringed. The ring is inset rather than a thicker border so the
+   pills do not shift by a pixel when the tab changes. */
+.pmpills b.on{background:rgba(7,9,16,.86);border-color:var(--tc);color:#fff;
+  box-shadow:inset 0 0 0 1px var(--tc), 0 1px 10px -3px var(--tc)}
+.pmpills b.on i{opacity:.95;color:var(--tc)}
+.pmpills b i{display:block;margin-top:1px;font-style:normal;font-size:5.5px;
+  font-weight:700;letter-spacing:.11em;text-transform:uppercase;opacity:.6}
+/* The season total sits opposite the jersey, top left -- the one number on the tile that
+   is a season rather than a rate. */
+.pmtot{position:absolute;top:4px;left:5px;z-index:1;padding:2px 5px 3px;border-radius:4px;
+  white-space:nowrap;
+  background:rgba(7,9,16,.55);border:1px solid rgba(255,255,255,.12);
+  font-size:10px;font-weight:700;line-height:1.05;color:var(--ink);text-align:center;
+  font-variant-numeric:tabular-nums;backdrop-filter:blur(3px)}
+.pmtot i{display:block;margin-top:1px;font-style:normal;font-size:5.5px;font-weight:700;
+  letter-spacing:.11em;text-transform:uppercase;opacity:.55}
+
+/* The jersey is back as a watermark on the photo as well as beside the name -- big and
+   faint behind the player, small and factual under him. */
+.pmwm{position:absolute;top:0;right:5px;z-index:1;font-size:34px;font-weight:800;
+  line-height:1;color:var(--ink);opacity:.2;font-variant-numeric:tabular-nums;
+  letter-spacing:-.04em}
+/* The number now sits beside the name, under the photo. */
+.pmno{flex:0 0 auto;font-size:9.5px;font-weight:700;color:var(--dim);
+  font-variant-numeric:tabular-nums}
+.pmno::before{content:'#'}
+/* Initials sit behind the portrait, so they only show when it is missing. */
+.pmfb{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;
+  font-size:16px;font-weight:800;color:var(--ink);opacity:.24;letter-spacing:.04em}
+/* Name and number share the line, but only the NAME may truncate -- ellipsising the whole
+   row dropped the number off the four longest names in the league. */
+.pmname{flex:0 0 auto;display:flex;align-items:baseline;gap:4px;padding:4px 6px 5px;
+  font-size:9.5px;font-weight:700;line-height:1.2}
+.pmname > span{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.rrow{display:grid;grid-template-columns:1fr 30px 42px 42px 42px;gap:7px;align-items:center;
+  font-size:11.5px;padding:3px 7px;border-radius:7px;font-variant-numeric:tabular-nums}
+.rrow:nth-child(odd){background:var(--pan2)}
+.rrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rrow .nm i{color:var(--dim);font-style:normal;font-size:10px;margin-left:5px}
+.rrow.gkrow{grid-template-columns:1fr 26px 62px 40px 36px;padding:1px 4px;font-size:11px}
+.box:has(> .gkrow){padding-top:8px;padding-bottom:8px}
+.rrow .n{color:var(--dim);text-align:right}
+.rrow.hd{background:none;color:var(--dim);font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;padding-bottom:1px}
+.rrow.hd i{font-style:normal;opacity:.6;font-size:8px;margin-left:2px}
+
+/* ---------- player card ---------- */
+.pgrid{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:33% 1fr;gap:16px}
+.shot{container-type:size;position:relative;flex:1 1 auto;min-height:0;border-radius:18px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 8%,rgba(255,255,255,.07),transparent 62%),
+             var(--pan2);border:1px solid var(--line);display:flex;align-items:flex-end}
+.shot img{width:100%;height:100%;object-fit:contain;object-position:bottom center;
+  display:block;filter:drop-shadow(0 12px 28px rgba(0,0,0,.55))}
+/* The portrait's drop-shadow filter makes it a stacking context, which lifts it over the
+   absolutely-positioned box behind it -- so a real click on the team name landed on the
+   photo. (element.click() does not hit-test, which is why a scripted click still worked
+   and hid this.) Raising the whole box fixed the click but dragged the giant number in
+   front of the player's face with it. Only the chip needs to come forward: the number
+   stays behind the cutout, where it belongs. */
+.jteam{position:relative;z-index:3}
+/* Two numbers in the photo box: the JERSEY big on the right, because that is what he is
+   called on the floor, and the RANK small on the left, captioned, because a bare number
+   is ambiguous and the ordering is the film's, not his. Both are watermarks behind the
+   cutout; sized by the box itself so they scale with it. */
+/* The jersey carries the team's colour, through winColor() so a near-black primary is
+   lifted to something that survives being a watermark. Opacity rather than an alpha in
+   the colour, because winColor hands back #rrggbb, rgb() or a var() depending on the
+   team, and none of those take an alpha the same way. */
+.jerseybox{position:absolute;top:6px;right:15px;text-align:right;pointer-events:none}
+.jerseybox .jteam{pointer-events:auto}
+/* His won-lost in the games he played, under the team name on the photo. */
+.jwl{display:block;margin-top:4px;font-size:12px;font-weight:700;letter-spacing:.06em;
+  color:rgba(232,236,245,.66);font-variant-numeric:tabular-nums;pointer-events:auto}
+/* How far they got, on the same line as the record. */
+.jpo{font-style:normal;font-weight:600;color:var(--dim)}
+.jpo.champ{color:var(--gold);font-weight:800}
+.jsep{font-style:normal;margin:0 5px;color:rgba(150,166,205,.45)}
+/* Outlined like a real jersey numeral: a soft fill with a brighter edge. Fill and edge
+   need separate alphas, so the tint goes in the colours rather than on the element --
+   an element opacity would dim both together. The plain rgba line is the fallback. */
+.jerseyno{display:block;font-weight:700;line-height:.82;opacity:.26;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-size:clamp(52px,7.4vw,104px)}
+@supports (color: color-mix(in srgb, red 50%, transparent)){
+  .jerseyno{opacity:1;
+    color:color-mix(in srgb, var(--tc) 22%, transparent);
+    -webkit-text-stroke:.022em color-mix(in srgb, var(--tc) 62%, transparent);
+    paint-order:stroke fill}
+}
+/* The team, in its own colour, under its own number. Smaller type needs more of the
+   colour than the watermark does to stay legible. */
+/* A chip, not loose text. At .62 alpha of a dark team colour, over a photo, the name and
+   its link rule both vanished -- and a plate in the team's own colour lifts it off
+   whatever happens to be behind it while reading as something you can press.
+   Dark scrim, near-white text, team colour in the BORDER. Two measured dead ends got it
+   here: tinting the plate with the same hue as the text put Philadelphia at 1.94:1
+   against its own plate, and keeping the text in the team colour still left six teams
+   under 3:1 -- the lifted blues and purples (SAC, PHI, NY, DET) have low luminance
+   whatever winColor does to them. The border identifies the team; the text just has to
+   be readable. */
+.jteam{display:inline-block;margin-top:7px;padding:4px 10px;border-radius:99px;
+  font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap;
+  color:rgba(232,236,245,.92);
+  background:rgba(7,9,16,.66);border:1px solid rgba(255,255,255,.14);
+  border-color:color-mix(in srgb, var(--tc) 60%, transparent);
+  transition:background .12s,border-color .12s}
+.jerseybox:hover .jteam{background:rgba(7,9,16,.88);color:#fff;
+  border-color:var(--tc)}
+/* The chip alone did not read as clickable -- it looks like a badge. Give the name the
+   same dotted rule every other cross-link carries, and let the whole chip light up. */
+.jteam .xl{border-bottom:1px dotted rgba(232,236,245,.45)}
+.jerseybox:hover .jteam .xl{border-bottom-color:currentColor}
+.rankno{position:absolute;top:8px;left:13px;pointer-events:none}
+.rankno b{display:block;font-weight:700;line-height:.82;color:rgba(232,236,245,.13);
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-size:clamp(26px,3.7vw,52px)}
+/* The total is the point of the rank, so it gets real size and real contrast; the word
+   stays a caption underneath it. */
+.rankno em{display:block;margin-top:7px;padding-left:2px;font-style:normal;font-weight:700;
+  line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  color:rgba(232,236,245,.5);font-size:clamp(15px,2vw,28px)}
+.rankno span{display:block;margin-top:4px;padding-left:2px;font-size:9px;
+  letter-spacing:.17em;text-transform:uppercase;color:rgba(150,166,205,.42)}
+/* Bounded by the box's height AND its width -- the jersey is one or two digits, the rank
+   one to three (only rank 100 is three, and it gets a narrower budget inline). The
+   clamps above are the fallback without size container queries. */
+@supports (container-type: size){
+  .jerseyno{font-size:min(74cqh, 42cqw)}
+  .rankno b{font-size:min(41cqh, var(--rw, 23cqw))}
+  .rankno em{font-size:min(9cqh, 6cqw)}
+}
+
+/* Points / Assists / Rebounds over the same game chart. */
+/* Title + Split/Avg + Points/Assists/Rebounds fit on one line in the card's right column
+   but not on a phone. Wrap them, same as .courthd -- a shrunk flex item breaks its own
+   text mid-phrase instead. */
+.loghd{display:flex;align-items:center;gap:10px;row-gap:4px;margin-bottom:6px;flex-wrap:wrap}
+.loghd > *{flex:0 0 auto}
+.loghd .kick{white-space:nowrap}
+.ltabs{margin-left:auto;display:flex;gap:3px;flex:0 0 auto}
+.ltabs.mtabs{margin-left:0}
+.ltab{font:inherit;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--dim);background:none;border:1px solid transparent;border-radius:99px;
+  padding:3px 9px;cursor:pointer;line-height:1}
+.ltab:hover{color:var(--ink)}
+.ltab.on{color:var(--ink);border-color:rgba(150,166,205,.3);background:var(--pan)}
+/* A cross-link keeps the colour of whatever it sits in and announces itself with a
+   dotted rule, so a hundred of them do not turn the deck blue. */
+.xl{color:inherit;text-decoration:none;border-bottom:1px dotted rgba(150,166,205,.4);
+  cursor:pointer}
+.xl:hover{color:var(--ink);border-bottom-color:currentColor}
+.pmeta{display:flex;align-items:center;gap:11px}
+.pmeta img{width:34px;height:34px;flex:0 0 auto}
+.pname{font-size:clamp(21px,2.4vw,33px);font-weight:700;line-height:1.03;letter-spacing:-.015em}
+/* Team, number and bio on ONE line -- it used to be two, and the second line came
+   straight off the shot chart below. Truncated rather than wrapped: a second line is
+   exactly what this is meant to avoid. */
+.psub{font-size:11.5px;color:var(--dim);margin-top:3px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.psub .pdim{color:rgba(139,150,173,.72)}
+.pleft,.pright{display:flex;flex-direction:column;gap:11px;min-height:0}
+.pleft{gap:8px}
+/* Portrait takes the top half of the left column and the shot chart sits under it,
+   which hands the whole right column to the stats and the game-by-game chart. */
+.pleft{overflow:hidden}
+.pleft .shot{flex:0 0 50%;min-height:0}
+/* Without a shot chart under it there is nothing to share the column with, so the
+   portrait takes the lot instead of stopping half way down. */
+.pleft.noshot .shot{flex:1 1 auto}
+/* The shot-chart panel carries class .col, whose flex rule used to come from the old
+   .pbot wrapper. Without it the panel is a plain block, .court's flex does nothing and
+   the svg falls back to its intrinsic aspect height -- which runs off the card. */
+.pleft > .panel{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  gap:6px;overflow:hidden}
+/* The game-by-game chart is the point of this card, so it gets the slack. */
+.pright .logwrap{flex:1 1 auto;min-height:120px}
+.logwrap{flex:1 1 auto;min-height:90px;display:flex;flex-direction:column}
+.log{width:100%;flex:1 1 auto;min-height:0;display:block;overflow:visible}
+.logwrap .arcbox{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.pbot{display:grid;gap:11px;min-height:0;flex:1 1 auto}
+.pbot.two{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}
+.pbot .col{display:flex;flex-direction:column;gap:11px;min-height:0}
+.court{width:100%;flex:1 1 auto;min-height:0;display:block}
+.courthd{display:flex;align-items:baseline;gap:10px;font-size:10px;color:var(--dim);
+  margin-bottom:2px}
+/* Three items that fit on one line in the card's left column but not on a phone. Let
+   them wrap to a clean second line rather than be squeezed: a shrunk flex item breaks
+   its own text mid-phrase ("1030" over "shots"). */
+.courthd{flex-wrap:wrap;row-gap:2px}
+.courthd > *{flex:0 0 auto}
+.courthd .rstat{margin-left:auto;white-space:nowrap}
+.courthd .kick{white-space:nowrap}
+.courthd .cramp{display:flex;align-items:center;gap:5px;font-size:9px;
+  color:rgba(150,166,205,.7);white-space:nowrap}
+.courthd b{color:var(--ink)}
+.court .line{fill:none;stroke:rgba(150,166,205,.4);stroke-width:2.2;
+  vector-effect:non-scaling-stroke}
+/* The rink. Lines in the league's own colours, dimmed: red lines, blue line, the
+   crease -- on a dark card they only need to locate the shots, not compete with them. */
+.rink .rk-board{fill:rgba(255,255,255,.018);stroke:rgba(150,166,205,.45);stroke-width:.6}
+.rink .rk-red{fill:none;stroke:rgba(224,85,74,.42);stroke-width:.45}
+.rink .rk-blue{fill:none;stroke:rgba(70,130,220,.62);stroke-width:1}
+.rink .rk-dot{fill:rgba(224,85,74,.55)}
+.rink .rk-crease{fill:rgba(70,130,220,.2);stroke:rgba(224,85,74,.45);stroke-width:.3}
+.rink .rk-net{fill:none;stroke:rgba(232,236,245,.5);stroke-width:.4}
+.rink .sh-miss{fill:rgba(150,166,205,.34)}
+.rink .sh-save{fill:none;stroke:var(--save);stroke-width:.32}
+.rink .sh-goal{fill:var(--goal);stroke:#070910;stroke-width:.25}
+.rink .sh-against{fill:var(--loss);stroke:#070910;stroke-width:.25}
+.dot.sh-k{background:none;border:1px solid var(--save);border-radius:50%}
+.hotbar{display:inline-block;width:48px;height:6px;border-radius:99px;vertical-align:middle;
+  background:linear-gradient(90deg,#3a6fb0,#8b96ad,#e0453f)}
+.mix{display:flex;height:9px;border-radius:99px;overflow:hidden;background:var(--pan2);gap:1px}
+.mix i{display:block;height:100%}
+/* --- the biggest nights: 100 columns, points up the y axis, name inside the column --- */
+
+/* One tooltip for the whole film, positioned from the pointer. position:fixed keeps it
+   out of the cards' overflow, which clips anything drawn inside a chart panel. */
+#tip{position:fixed;z-index:60;left:0;top:0;min-width:172px;max-width:260px;
+  padding:10px 12px;border-radius:13px;background:rgba(10,13,21,.97);
+  border:1px solid rgba(150,166,205,.2);box-shadow:0 16px 44px rgba(0,0,0,.55);
+  pointer-events:none;opacity:0;transition:opacity .09s;font-size:11px;line-height:1.45}
+#tip.on{opacity:1}
+#tip .tbig{font-size:25px;font-weight:700;line-height:1;letter-spacing:-.02em}
+#tip .tbig em{font-size:11px;font-weight:400;font-style:normal;color:var(--dim)}
+#tip .tnm{font-size:13px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
+#tip .tdim{color:var(--dim)}
+#tip .trow{margin-top:5px}
+
+.mixlab{display:flex;gap:12px;font-size:10px;color:var(--dim);margin-top:5px;flex-wrap:wrap}
+.mixlab b{color:var(--ink)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:4px}
+
+/* ---------- cover + charts ---------- */
+.cover{position:relative;flex:1 1 auto;display:flex;flex-direction:column;
+  justify-content:center;gap:16px;text-align:center;align-items:center}
+/* Madison Square Garden behind the title. Already darkened in the file; the gradient
+   on top pins the centre darker still so the display type never fights the crowd. */
+/* Photo with a scrim layered over it, not a global dim: the band behind the text is
+   darkened so the small copy stays readable, while the bowl above and below keeps its
+   brightness. The file itself is only lightly darkened. */
+.coverbg{position:absolute;inset:-18px -20px;z-index:-1;
+  background:radial-gradient(60% 55% at 50% 42%,rgba(42,159,216,.16),transparent 70%),
+             radial-gradient(90% 60% at 50% 100%,rgba(232,236,245,.05),transparent 70%);
+  -webkit-mask-image:linear-gradient(180deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  mask-image:linear-gradient(180deg, transparent 0%, #000 12%, #000 88%, transparent 100%)}
+.covercred{font-size:10px;color:rgba(150,166,205,.5);letter-spacing:.02em;margin-top:2px}
+.covercred a{color:rgba(150,166,205,.72);text-decoration:none;
+  border-bottom:1px solid rgba(150,166,205,.22)}
+.cover h1{font-size:clamp(34px,6vw,84px);font-weight:700;letter-spacing:-.03em;line-height:.98}
+.cover h1 em{font-style:normal;color:var(--acc)}
+.cover p{max-width:56ch;color:#c2cadb;font-size:clamp(13px,1.35vw,16px);line-height:1.6;
+  text-shadow:0 1px 14px rgba(7,9,16,.85)}
+.cover h1{text-shadow:0 2px 26px rgba(7,9,16,.7)}
+.cover .cstat .k{color:#a6b0c6}
+.cstat{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.cstat div{text-align:center}
+
+/* The scoring race. The headshots are transparent cutouts, so a player standing at the
+   foot of his own column has the team colour behind him rather than a photo box. */
+/* The switch shares the line with the standfirst rather than taking one of its own:
+   the columns want every pixel of height they can get. */
+.racewrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:14px}
+.racehd{display:flex;align-items:flex-start;gap:14px}
+.racehd p{font-size:12px;color:var(--dim);max-width:80ch;margin:0}
+.race{flex:1 1 auto;min-height:0;display:grid;
+  grid-template-columns:repeat(10,minmax(0,1fr));grid-template-rows:minmax(0,1fr);
+  gap:clamp(4px,.9vw,15px)}
+.rcol{min-width:0;height:100%;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:8px;
+  container-type:inline-size}
+.rplot{position:relative;display:flex;align-items:flex-end;min-height:0}
+/* A SIZE container, so everything inside can be bounded by the bar's own height as well
+   as its width. Without that, a short column cannot hold its furniture: the triples view
+   is led by Jokić on 34 with the rest under 13, which puts a 30px number, a 48px rank
+   and a 99px photo inside a 128px bar, and they land on top of each other. Bounding them
+   by cqh shrinks the contents of a short column instead of padding the column out to fit
+   them, so the scale stays honest. */
+.rbar{position:relative;display:block;width:100%;border-radius:11px 11px 7px 7px;
+  overflow:hidden;text-decoration:none;color:inherit;container-type:size;
+  background:linear-gradient(180deg,var(--c),color-mix(in srgb,var(--c) 52%,#05070d))}
+.rbar:hover{outline:2px solid rgba(255,255,255,.4);outline-offset:1px}
+/* Stacked segments, from the baseline up, as a share of the column's own height. A
+   segment with no colour of its own leaves the bar's gradient showing through. */
+.rseg{position:absolute;left:0;right:0;display:block}
+/* The value, at the top of the column. Outlined rather than filled: a solid number this
+   size becomes a second block of colour on a column that is already one. --ic is set per
+   column from ink() against whatever segment the label lands on -- gold and the
+   free-throw pink are far too light to take a white outline. */
+.rval{position:absolute;left:0;right:0;top:8px;z-index:2;text-align:center;font-weight:800;
+  line-height:.88;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+  color:var(--ic,rgba(255,255,255,.95));font-size:clamp(15px,2.2vw,32px)}
+@supports (-webkit-text-stroke: 1px #000){
+  .rval{color:transparent;-webkit-text-stroke:1.4px var(--ic,rgba(255,255,255,.93))}
+}
+.rval i{display:block;margin-top:4px;font-style:normal;font-weight:700;font-size:8px;
+  letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.6);
+  -webkit-text-stroke:0;white-space:nowrap}
+/* Two numbers on the line instead of one, so it gets its own budget: "34 · 55" is seven
+   characters where "55" is two, and at the single-number size it runs past the column. */
+.rval.two{font-size:clamp(11px,1.5vw,22px)}
+.rval.two em{font-style:normal;margin:0 .2em;opacity:.5}
+.rfoot img{width:100%;display:block}
+/* The rank sits just above the player, so the two read as one object at the foot of the
+   bar. Clear of him, not tucked into him: these cutouts have almost no transparent
+   headroom -- the hair starts within a few percent of the top edge -- so a negative
+   margin here puts a number on his head rather than over it. */
+.rfoot{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;
+  flex-direction:column;align-items:center}
+.rrk{font-style:normal;font-weight:800;line-height:.78;letter-spacing:-.04em;
+  color:rgba(255,255,255,.22);font-size:clamp(22px,3.4vw,58px);margin-bottom:5px}
+/* Sized to the column, not the window: ten of these narrow as the card does, and every
+   one is bounded by its own bar's height so a short column shrinks rather than collides. */
+@supports (container-type: size){
+  .rval{font-size:max(10px, min(27cqw, 34px, 15cqh))}
+  .rval i{font-size:min(8px, 3.5cqh)}
+  .rval.two{font-size:max(10px, min(17cqw, 22px, 11cqh))}
+  .rval.two i{font-size:min(8px, 5.2cqw, 3.5cqh)}
+  /* Below this the number would be shrinking past legibility to make room for its own
+     caption and rank -- Banchero's three triples against Jokić's 34 is a 47px column.
+     So the furniture goes instead and the number holds at 10px: the player is still
+     there, and the name and the full line are in the caption underneath either way. */
+  @container (max-height: 140px){
+    .rval i, .rrk{display:none}
+  }
+  .rrk{font-size:min(46cqw, 62px, 22cqh)}
+  .rfoot img{width:min(100%, 48cqh)}
+}
+.rnm{text-align:center;font-size:clamp(9.5px,.82vw,12px);line-height:1.3;min-width:0}
+.rnm .rwho{display:block;font-weight:600;overflow-wrap:anywhere}
+.rnm i{display:block;color:var(--dim);font-style:normal;font-size:9.5px;margin-top:1px}
+.rnm .rtot b{color:var(--ink);font-weight:700}
+@media (max-width:1000px){
+  .race{grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);
+    row-gap:14px}
+}
+
+.chart{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.crow{display:grid;grid-template-columns:26px 1fr 58px;gap:9px;align-items:center;
+  font-size:11.5px;font-variant-numeric:tabular-nums}
+.crow .rk{color:var(--dim);text-align:right}
+.cbar{height:19px;border-radius:5px;position:relative;background:var(--pan2);overflow:hidden}
+.cbar i{position:absolute;inset:0 auto 0 0;border-radius:5px}
+.cbar span{position:absolute;left:8px;top:0;height:100%;display:flex;align-items:center;
+  font-size:11px;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.ladder{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:16px;
+  overflow:hidden}
+.lcol{display:flex;flex-direction:column;gap:2px;min-height:0;overflow-y:auto}
+.lrow{display:grid;grid-template-columns:22px 26px 1fr 64px 38px 40px;gap:8px;align-items:center;
+  font-size:11.5px;padding:2px 6px;border-radius:7px;font-variant-numeric:tabular-nums}
+.lrow:nth-child(even){background:var(--pan2)}
+.lrow img{width:18px;height:18px}
+.lrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow.out{opacity:.5}
+.lrow.hd{background:none;color:var(--dim);font-size:9px;letter-spacing:.1em;text-align:right}
+.lrow .ldiv{font-style:normal;font-size:9.5px;color:var(--dim);margin-left:6px}
+
+/* ---------- modals ---------- */
+.mod{position:fixed;inset:0;z-index:60;background:rgba(4,6,12,.82);
+  backdrop-filter:blur(7px);display:none;place-items:center;padding:22px}
+.mod.on{display:grid}
+/* A roster row that leads somewhere says so on hover, like any other cross-link. */
+.rrow .xl{border-bottom:none}
+.rrow:hover .xl{border-bottom:1px dotted currentColor}
+.mbox{width:min(720px,94vw);max-height:84vh;overflow:auto;background:#0d1019;
+  border:1px solid var(--line);border-radius:20px;padding:22px 24px}
+.mbox h3{font-size:17px;font-weight:700;margin-bottom:12px}
+.mbox p,.mbox li{font-size:12.5px;color:var(--dim);line-height:1.65}
+.mbox ul{margin:8px 0 8px 17px}
+.mclose{position:absolute;top:16px;right:18px}
+kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--line);
+  border-radius:6px;padding:1px 6px;color:var(--ink)}
+#jq{width:100%;background:var(--pan2);border:1px solid var(--line);border-radius:12px;
+  padding:11px 13px;color:var(--ink);font:inherit;font-size:13px;margin-bottom:10px}
+#jq:focus{outline:none;border-color:var(--acc)}
+#jmodal .mbox{width:min(1040px,96vw)}
+#jlist{max-height:62vh;overflow:auto}
+.jsec{margin-bottom:14px}
+.jsechd{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  border-bottom:1px solid var(--line);padding-bottom:5px;margin-bottom:6px}
+.jsechd span{color:var(--ink);opacity:.5;margin-left:6px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:2px 10px}
+.jrow{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:baseline;
+  padding:5px 8px;border-radius:8px;cursor:pointer;font-size:12.5px;min-width:0}
+.jrow:hover,.jrow.sel{background:var(--pan)}
+.jrow .jn{color:var(--dim);font-variant-numeric:tabular-nums;text-align:right;font-size:11px}
+.jrow .jl{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jrow .jt{color:var(--dim);font-size:10.5px;margin-left:5px}
+.applist{display:flex;flex-direction:column;gap:3px}
+.approw{display:grid;grid-template-columns:12px 1fr auto;gap:11px;align-items:center;
+  padding:9px 10px;border-radius:10px;text-decoration:none;color:var(--ink);font-size:12.5px}
+.approw:hover{background:var(--pan)}
+.approw i{width:9px;height:9px;border-radius:99px}
+.approw em{font-style:normal;color:var(--dim);font-size:11px;display:block}
+
+@media (max-width:900px){
+  /* One column, and the card itself scrolls. The desktop layout clips panels on
+     purpose to keep a card to one screen; on a phone that clipping hid the playoff
+     rounds and all but one roster row, so it has to be released here. */
+  /* NOT a one-column grid: the grid box has a definite height, so its auto rows share
+     that height and the left column -- which still carries min-height:0 -- collapses to
+     0px while its content spills over the right column. A flex column takes natural
+     heights and lets the card scroll instead. */
+  /* Any card may exceed a phone screen, so the card body itself scrolls. Without this
+     the chart cards (which have no .tgrid/.pgrid) simply overflowed with no scroller,
+     because their inner ones are released below. */
+  .in{overflow-y:auto;overscroll-behavior:contain;min-height:0}
+  .tgrid,.pgrid{display:flex;flex-direction:column;gap:14px;overflow:visible}
+  .tid,.tright,.pleft,.pright,.tcol,.rost,.rgrid{overflow:visible;min-height:auto;
+    flex:0 0 auto}
+  .pbot,.pbot.two{grid-template-columns:1fr}
+  /* These must out-specify `.pleft .shot{flex:0 0 50%;min-height:0}` and
+     `.pleft > .panel{flex:1 1 auto;min-height:0}`, which are two-class selectors. They
+     did not, so on a phone the portrait was sized as half of a column that no longer
+     has a definite height, and the court svg drew 240px tall inside a 118px panel --
+     the dots spilled out past the panel's own rounded border. */
+  .pleft .shot{flex:0 0 auto;min-height:44vh}
+  .pleft > .panel{flex:0 0 auto}
+  .pleft .court{flex:0 0 auto;height:auto;min-height:240px}
+  .shot img{object-fit:contain}
+  .ladder{grid-template-columns:1fr;overflow:visible}
+  .lcol{overflow:visible}
+  .chart{overflow:visible}
+  /* The top bar carries more than 375px can hold; let it scroll sideways and drop
+     the card title, which the counter already tells you. */
+  #topbar{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;gap:8px}
+  #topbar::-webkit-scrollbar{display:none}
+  #ctx,#credit{display:none}
+  .jerseyno{font-size:min(68cqh,42cqw)}
+  .jteam{font-size:10px}
+  .rankno b{font-size:min(41cqh, var(--rw, 23cqw))}
+  .rankno em{font-size:min(9cqh, 6cqw)}
+  /* Hanging the close button outside the box puts it off the right edge of a phone. */
+}
+</style>
+<!-- Umami --><script defer src="https://m.aguywithascarf.com/k.js" data-website-id="__UMAMI_ID__"></script>
+<script defer src="https://dataviz.aguywithascarf.com/ver.js"></script><!-- End Umami -->
+</head>
+<body>
+
+<div id="topbar">
+  <!-- One strip: the towers view of the season, then this film's four sections. No
+       "Film" pill -- on this page it would mark where you already are, and on the towers
+       page the four section pills are themselves the way in. -->
+  <div id="pills"></div>
+  <div class="seg" id="seasons" style="flex:0 0 auto"></div>
+  <div id="ctx"></div>
+  <div id="credit">Produced with passion by <b>Carlo De Marchis</b> ·
+    <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="nhl" href="https://dataviz.aguywithascarf.com/releases/#nhl" target="_blank" rel="noopener"></a></div>
+</div>
+
+<div id="film"></div>
+
+<div id="tip"></div>
+
+<div id="ctlbar">
+  <button class="ic" title="Restart (Home)" onclick="go(0)"><svg viewBox="0 0 24 24"><path d="M2 5v6h6"/><path d="M4.6 15.5a8.5 8.5 0 1 0 2-8.8L2 11"/></svg></button>
+  <button class="ic" title="Previous (←)" onclick="step(-1)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+  <button class="ic" id="playb" title="Play" onclick="togglePlay()"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></button>
+  <button class="ic" title="Next (→)" onclick="step(1)"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+  <button id="counter" title="Jump to a card (g)" onclick="openJump()"></button>
+  <button class="ic" title="More sports experiences" onclick="openMod('mmodal')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="ic" title="Help (h)" onclick="openMod('hmodal')"><svg viewBox="0 0 24 24"><path d="M12 17h.01M9.1 9a3 3 0 1 1 4.2 2.7c-.8.4-1.3 1.1-1.3 2"/></svg></button>
+  <button class="ic" title="Fullscreen (f)" onclick="fs()"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></button>
+</div>
+
+<div class="mod" id="jmodal" onclick="if(event.target===this)closeMods()">
+  <div class="mbox" onclick="event.stopPropagation()">
+    <h3>Jump to a card</h3>
+    <input id="jq" placeholder="Team, player, city, country — or a card number" autocomplete="off">
+    <div id="jlist"></div>
+  </div>
+</div>
+
+<div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()">
+  <div class="mbox" onclick="event.stopPropagation()">
+    <h3>How to read this</h3>
+    <p>The __SEASON__ NHL season as a film: the leading scorers, the goalies with the most
+      wins, the charts that rank them, then every team in order of points. Every card
+      deep-links: copy the address bar.</p>
+    <ul>
+      <li><b>Team cards</b> — the curve is the <b>season arc</b>: points above a .500 pace
+        after every game. A win lifts it, a regulation loss drops it, and an overtime or
+        shootout loss — which still earns a point — leaves it level.</li>
+      <li><b>Skater cards</b> — the bars are points in each game, split into
+        <b style="color:var(--goal)">goals</b>, <b style="color:var(--a1)">primary</b> and
+        <b style="color:var(--a2)">secondary assists</b>. Switch to <i>Avg</i> for
+        <b style="color:var(--win)">at or above</b> / <b style="color:var(--loss)">below</b>
+        his own average, with his <b style="color:var(--gold)">best night</b> in gold.
+        Skaters are ordered by <b>points</b>, goals breaking ties.</li>
+      <li>The <b>rink</b> is every located shot he took, turned so they all fly at the net on
+        the right: <b style="color:var(--goal)">goals</b> filled, saved shots as rings,
+        misses as faint dots. On a goalie's card it is every shot he faced, with the goals
+        that beat him in red.</li>
+      <li><b>Goalie cards</b> — the bars are shots faced, split into saves and goals against,
+        and the result strip is his own decision, not the team's.</li>
+      <li><b>Unlisted cards</b> — everyone else who played has a card too, reached from a
+        roster tile, a name anywhere in the film, the search, or its number in the address
+        bar. The arrows never wander into them.</li>
+    </ul>
+    <p><kbd>←</kbd> <kbd>→</kbd> move · <kbd>space</kbd> play ·
+      <kbd>Home</kbd> <kbd>End</kbd> ends · <kbd>g</kbd> or <kbd>/</kbd> jump ·
+      <kbd>f</kbd> fullscreen · <kbd>h</kbd> help · <kbd>Esc</kbd> close.
+      Swipe on a touch screen.</p>
+  <p class="agwas-rel"><a href="https://dataviz.aguywithascarf.com/releases/#nhl" target="_blank" rel="noopener">Release notes</a> <a class="agwas-ver" data-agwas-ver="nhl" href="https://dataviz.aguywithascarf.com/releases/#nhl" target="_blank" rel="noopener"></a></p></div>
+</div>
+
+<div class="mod" id="cmodal" onclick="if(event.target===this)closeMods()">
+  <div class="mbox" onclick="event.stopPropagation()">
+    <h3>Credits &amp; sources</h3>
+    <p>Built by <b>Carlo De Marchis</b> — <i>A Guy With A Scarf</i>. A showcase piece,
+      not a commercial product.</p>
+    <ul>
+      <li><b>Schedule, results, box scores, play-by-play and season statistics</b> — the
+        NHL's public APIs. Records reconciled against the official standings for all 32
+        teams, and every skater's games, goals, assists and points rebuilt game by game and
+        reconciled to the league's own season totals.</li>
+      <li><b>Shot locations</b> — the NHL's play-by-play. Where the feed's located shots
+        and its box score disagree by a shot, the card prints the official total.</li>
+      <li><b>Crests and portraits</b> — official NHL artwork from assets.nhle.com.</li>
+    </ul>
+    <p id="cnote"></p>
+  </div>
+</div>
+
+<div class="mod" id="mmodal" onclick="if(event.target===this)closeMods()">
+  <div class="mbox" style="width:min(430px,94vw)" onclick="event.stopPropagation()">
+    <h3>More sports experiences</h3>
+    <div class="applist" id="applist"></div>
+    <p style="margin-top:12px"><a href="https://dataviz.aguywithascarf.com"
+      target="_blank" rel="noopener">See them all →</a></p>
+  </div>
+</div>
+
+<script>
+const D = /*__DATA__*/{};
+const SEASON = D.season;
+const NAMES = D.names || {};
+const TEAMS = {}; D.teams.forEach(t => TEAMS[t.abbr] = t);
+/* Which series the game chart is showing. Global, so it carries from card to card, and
+   remembered, per the rule that these pages reopen where you left them. */
+let METRIC = 'pts', GMETRIC = 'sa';
+/* How the points columns are coloured: 'split' stacks them by 2PT / 3PT / FT, 'avg'
+   colours the whole bar green at or above the average, red below, gold for the best
+   night. Rebounds and assists have no split, so they are always drawn the 'avg' way. */
+let LOGMODE = 'split';
+/* Whether the playoff run is appended to the season on the game chart. On by default:
+   it is the end of the same story. A single toggle -- there is no playoffs-only view,
+   because six bars alone in a 72-bar frame say less than six bars in their context. */
+let POON = true;
+try {
+  const m = localStorage.getItem('nhl.metric'); if (m) METRIC = m;
+  const gm = localStorage.getItem('nhl.gmetric'); if (gm) GMETRIC = gm;
+  const d = localStorage.getItem('nhl.logmode'); if (d) LOGMODE = d;
+  const q = localStorage.getItem('nhl.poon'); if (q !== null) POON = q === '1';
+} catch(e) {}
+
+const crest = ab => `img/crest/${ab}.svg`;
+/* Brooklyn and San Antonio are #000000, invisible as a line colour; prefer a clearly
+   brighter secondary. Mirrors winColor() on the towers page. */
+/* winColor() guarantees a brightness floor, NOT a contrast ratio -- the lifted blues and
+   purples (SAC, PHI, NY, DET) still land near 2:1 on this background, which is illegible
+   at label size. Blend toward white until the ratio clears, keeping the hue. */
+function readable(c, min){
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c)
+         || /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(c);
+  if (!m) return c;                                   // var(--acc) and friends: leave be
+  const hex = c[0] === '#' || /^[0-9a-f]{6}$/i.test(c);
+  let rgb = m.slice(1, 4).map(v => hex ? parseInt(v, 16) : +v);
+  const rel = ([r, g, b]) => {
+    const f = v => (v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+  };
+  const BG = rel([9, 11, 18]);
+  for (let i = 0; i < 20 && (rel(rgb) + 0.05) / (BG + 0.05) < min; i++)
+    rgb = rgb.map(v => Math.round(v + (255 - v) * 0.12));
+  return `rgb(${rgb.join(',')})`;
+}
+
+function lum(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return (0.2126*(n>>16) + 0.7152*((n>>8)&255) + 0.0722*(n&255)) / 255;
+}
+function winColor(t){
+  const p = lum(t.primary), sec = lum(t.secondary);
+  if (p === null) return 'var(--acc)';
+  if (p >= 0.22) return t.primary;
+  if (sec !== null && sec > p + 0.12) return t.secondary;
+  const m = /^#?([0-9a-f]{6})$/i.exec(t.primary), n = parseInt(m[1], 16);
+  const k = 0.30 / Math.max(p, 0.02);
+  const c = [n>>16, (n>>8)&255, n&255].map(v => Math.min(255, Math.round(v*k + 62)));
+  return `rgb(${c.join(',')})`;
+}
+const head  = id => `img/head/${id}.webp`;
+/* "Luka Dončić" -> "L. Dončić". The payload's own short form is folded to ascii, which
+   is fine for searching and wrong on a card. */
+const shortName = s => {
+  const w = String(s || '').split(' ');
+  return w.length > 1 ? `${w[0][0]}. ${w.slice(1).join(' ')}` : s;
+};
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sgn = n => (n > 0 ? '+' : '') + n;
+
+/* ---------- card list ---------- */
+/* Cover, then the players and the charts that are ABOUT players, then the teams and the
+   chart that is about teams. The charts are split by their subject, not kept in one lump
+   at the end: the scoring race, the shot diet and the biggest nights all rank players,
+   the ladder ranks teams. */
+const PCHARTS = ['race', 'goalrace', 'astrace', 'gkrace', 'nights', 'volume'];
+const TCHARTS = ['ladder'];
+const GOALIES = D.goalies || [];
+
+/* Cover, the skaters, the goalies, the charts that rank players, then the teams and the
+   chart that ranks teams. */
+const CARDS = [{kind:'cover'}]
+  .concat(D.players.map(p => ({kind:'player', p})))
+  .concat(GOALIES.map(p => ({kind:'player', p})))
+  .concat(PCHARTS.map(k => ({kind:k})))
+  .concat(D.teams.map(t => ({kind:'team', t})))
+  .concat(TCHARTS.map(k => ({kind:k})));
+
+const secSlug = n => String(n).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+/* The unlisted cards: everyone who played but is outside the carded skaters and
+   goalies. One re-used <section> at the end of the film shows whichever is open; the
+   records are fetched per team, on demand. */
+const TAIL = D.tail || [];
+const TAIL_OF = {};
+TAIL.forEach((r, k) => { TAIL_OF[r[0]] = k; });
+
+const CARD_OF_TEAM = {}, CARD_OF_PLAYER = {};
+const xlink = (i, html) => i == null
+  ? html
+  : `<a class="xl" href="#${i + 1}" onclick="closeMods();go(${i});return false">${html}</a>`;
+const tlink = (ab, html) => xlink(CARD_OF_TEAM[ab], html);
+const plink = (id, html) => CARD_OF_PLAYER[id] != null ? xlink(CARD_OF_PLAYER[id], html)
+  : TAIL_OF[id] != null ? tailLink(TAIL_OF[id], html)
+  : html;
+
+const NP = D.players.length, NG = GOALIES.length;
+const SECTIONS = [
+  ['Players',      1, NP],
+  ['Goalies',      1 + NP, NG],
+  ['Player stats', 1 + NP + NG, PCHARTS.length],
+  ['Teams',        1 + NP + NG + PCHARTS.length, D.teams.length],
+  ['Team stats',   1 + NP + NG + PCHARTS.length + D.teams.length, TCHARTS.length],
+].filter(x => x[2] > 0).map(x => ({name: x[0], at: x[1]}));
+
+CARDS.forEach((c, i) => {
+  if (c.kind === 'team') CARD_OF_TEAM[c.t.abbr] = i;
+  if (c.kind === 'player') CARD_OF_PLAYER[c.p.id] = i;
+});
+
+/* ---------- drawing helpers ---------- */
+
+/* The season arc: points above a .500 pace after every game.
+
+   Hockey's .500 is a point a game, so a win is +1 on this line, a regulation loss -1,
+   and an overtime or shootout loss -- which still earns the point -- leaves it where it
+   was. That is the whole reason this is not "games above .500": in the NHL a third of
+   the losses are worth something, and a line that treated them as losses would sink
+   teams the standings keep afloat. The curve therefore finishes at exactly
+   points - games played.
+
+   Scaled per club, grid lines labelled, green above and red below -- the same three
+   rules the NBA film learned the hard way. */
+const bump = r => r === 'W' ? 1 : r === 'L' ? -1 : 0;
+
+function arcSvg(t){
+  const games = t.games;
+  const pts = []; let bal = 0, hi = 0, lo = 0;
+  games.forEach(g => {
+    if (!g.res) return;
+    bal += bump(g.res);
+    pts.push(bal); hi = Math.max(hi, bal); lo = Math.min(lo, bal);
+  });
+  if (!pts.length) return `<div class="box" style="color:var(--dim);font-size:12px">
+    Not played yet — ${games.length} games scheduled.</div>`;
+
+  const W = 1000, H = 260, mid = H / 2;
+  const SC = Math.max(6, Math.ceil(Math.max(Math.abs(hi), Math.abs(lo), 1) / 5) * 5);
+  const STEP = SC <= 12 ? 2 : SC <= 30 ? 5 : 10;
+  const y = v => mid - (v / SC) * (mid - 6);
+  const x = i => i / Math.max(1, pts.length - 1) * W;
+  let d = `M0 ${y(pts[0]).toFixed(1)}`;
+  pts.forEach((v, i) => { d += ` L${x(i).toFixed(1)} ${y(v).toFixed(1)}`; });
+  const area = `${d} L${W} ${mid} L0 ${mid} Z`;
+
+  let grid = '';
+  for (let v = STEP; v <= SC; v += STEP){
+    for (const sv of [v, -v]){
+      const gy = y(sv);
+      if (gy < 4 || gy > H - 4) continue;
+      grid += `<line x1="0" y1="${gy.toFixed(1)}" x2="${W}" y2="${gy.toFixed(1)}"
+        stroke="rgba(150,166,205,.10)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    }
+  }
+
+  // One tick per game under the plot: a win high, a loss low, an OT loss in between in
+  // amber -- it sits between the two because that is what it is worth.
+  const tw = W / games.length;
+  const ticks = games.map((g, i) => {
+    const xx = (i*tw).toFixed(2), ww = Math.max(1, tw-.7).toFixed(2);
+    if (!g.res) return `<rect x="${xx}" y="${H+14}" width="${ww}" height="7" rx="1.5"
+      fill="rgba(150,166,205,.16)"/>`;
+    const [yy, c] = g.res === 'W' ? [H+8, 'var(--win)'] : g.res === 'L' ? [H+18, 'var(--loss)']
+                  : [H+13, 'var(--otl)'];
+    return `<rect x="${xx}" y="${yy}" width="${ww}" height="9" rx="1.5" fill="${c}" opacity=".85"/>`;
+  }).join('');
+
+  const TOT = H + 30;
+  const lbl = (v, txt, cls) =>
+    `<span class="arclbl ${cls || ''}" style="top:${(y(v) / TOT * 100).toFixed(2)}%">${txt}</span>`;
+  let labels = lbl(0, '.500', 'zero');
+  for (let v = STEP * 2; v <= SC; v += STEP * 2){
+    if (y(v) > 10) labels += lbl(v, '+' + v);
+    if (y(-v) < H - 10) labels += lbl(-v, '−' + v);
+  }
+  const mark = (v, cls, side) => {
+    const f = pts.length > 1 ? pts.indexOf(v) / (pts.length - 1) : 0;
+    const top = y(v) / TOT * 100;
+    const up = side === 'up' ? top >= 10 : top > 78;
+    const tx = f < .05 ? '0' : f > .95 ? '-100%' : '-50%';
+    return `<span class="arcpk ${cls}" style="left:calc(34px + (100% - 34px) * ${f.toFixed(4)});
+      top:${top.toFixed(2)}%;transform:translate(${tx},${up ? '-100%' : '0'})
+      translateY(${up ? '-7px' : '9px'})">${sgn(v)}</span>`;
+  };
+  if (hi > 0) labels += mark(hi, 'hi', 'up');
+  if (lo < 0) labels += mark(lo, 'lo', 'down');
+
+  const oppRow = `<div class="arcopp">${games.map(g => g.opp
+    ? `<i style="color:${readable(winColor(TEAMS[g.opp] || {}), 3.2)}">${esc(g.opp)}</i>`
+    : '<i></i>').join('')}</div>`;
+
+  return `<div class="arcbox">${labels}<svg class="arc" viewBox="0 0 ${W} ${TOT}" preserveAspectRatio="none">
+    <defs>
+      <clipPath id="up${t.abbr}"><rect x="0" y="0" width="${W}" height="${mid}"/></clipPath>
+      <clipPath id="dn${t.abbr}"><rect x="0" y="${mid}" width="${W}" height="${H}"/></clipPath>
+    </defs>
+    ${grid}
+    <path d="${area}" fill="var(--win)" fill-opacity=".26" clip-path="url(#up${t.abbr})"/>
+    <path d="${area}" fill="var(--loss)" fill-opacity=".26" clip-path="url(#dn${t.abbr})"/>
+    <line x1="0" y1="${mid}" x2="${W}" y2="${mid}"
+      stroke="rgba(232,236,245,.55)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+    <path d="${d}" fill="none" stroke="${winColor(t)}" stroke-width="2.4"
+      vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+    ${hi > 0 ? `<circle cx="${x(pts.indexOf(hi)).toFixed(1)}" cy="${y(hi).toFixed(1)}" r="3.6" fill="var(--win)"/>` : ''}
+    ${lo < 0 ? `<circle cx="${x(pts.indexOf(lo)).toFixed(1)}" cy="${y(lo).toFixed(1)}" r="3.6" fill="var(--loss)"/>` : ''}
+    ${ticks}
+  </svg></div>${oppRow}
+  <div class="mixlab" style="margin-top:4px">
+    <span><i class="dot" style="background:var(--win)"></i>win <b>+1</b></span>
+    <span><i class="dot" style="background:var(--otl)"></i>OT/SO loss <b>±0</b></span>
+    <span><i class="dot" style="background:var(--loss)"></i>loss <b>−1</b></span>
+    <span>peak <b>${sgn(hi)}</b> · low <b>${sgn(lo)}</b> · finished <b>${sgn(pts[pts.length-1])}</b></span>
+    <span style="margin-left:auto;color:var(--dim)">${games.length} games · scale set by this club, ±${SC}</span>
+  </div>`;
+}
+
+/* ---------- the game chart ----------
+   One scale per metric for the whole deck (99th percentile of the season highs), so
+   flipping cards compares real numbers. Skaters and goalies are different animals with
+   different charts, so each kind has its own set of metrics and its own scales. */
+function deckScale(pool, pick, step, floor){
+  const highs = pool.map(pick).filter(v => v != null).sort((a, b) => a - b);
+  if (!highs.length) return floor;
+  const p99 = highs[Math.floor(highs.length * 0.99) - 1] || highs[highs.length - 1];
+  return Math.max(floor, Math.ceil(p99 / step) * step);
+}
+const G_ = (p, i) => (p.glog || [])[i] || [];
+const r1 = v => Math.round(v * 10) / 10;
+/* Where a point came from: the goal, the pass that set it up, the pass before that. */
+const SPLIT_S = [['goals', 'var(--goal)'], ['primary assists', 'var(--a1)'],
+                 ['secondary assists', 'var(--a2)']];
+/* What happened to the shots a goalie faced. Saves in the same pale ink the rink uses
+   for a saved shot, goals in the loss red. */
+const SPLIT_G = [['saves', 'var(--save)'], ['goals against', 'var(--loss)']];
+
+const METRICS_S = {
+  pts: {name: 'points', tab: 'Points', avg: p => p.ppm, high: p => p.highs.pts,
+        val: (p, i) => p.log[i], po: e => e[0],
+        split: (p, i) => { const g = G_(p, i); return [g[3], g[4], g[5]]; },
+        poSplit: e => [e[1], e[2], e[3]], keys: SPLIT_S,
+        scale: () => deckScale(D.players, p => p.highs.pts, 1, 4), step: 1},
+  sog: {name: 'shots on goal', tab: 'Shots', avg: p => r1(p.sog / (p.gp || 1)),
+        high: p => p.highs.sog, val: (p, i) => G_(p, i)[6] || 0, po: e => e[4],
+        scale: () => deckScale(D.players, p => p.highs.sog, 2, 8), step: 2},
+  hits: {name: 'hits', tab: 'Hits', avg: p => r1(p.hits / (p.gp || 1)),
+         high: p => p.highs.hits, val: (p, i) => G_(p, i)[7] || 0, po: e => e[5],
+         scale: () => deckScale(D.players, p => p.highs.hits, 2, 8), step: 2},
+  toi: {name: 'minutes on the ice', tab: 'Ice time', avg: p => p.toi, high: p => p.highs.toi,
+        val: (p, i) => G_(p, i)[2] || 0, po: e => e[6],
+        scale: () => deckScale(D.players, p => p.highs.toi, 5, 20), step: 5},
+};
+const METRICS_G = {
+  sa: {name: 'shots faced', tab: 'Shots faced', avg: p => r1(p.sa / (p.gp || 1)),
+       high: p => p.highs.sa, val: (p, i) => G_(p, i)[3] || 0, po: e => e[0] + e[1],
+       split: (p, i) => { const g = G_(p, i); return [(g[3] || 0) - (g[4] || 0), g[4] || 0]; },
+       poSplit: e => [e[0], e[1]], keys: SPLIT_G,
+       scale: () => deckScale(GOALIES, p => p.highs.sa, 10, 30), step: 10},
+  ga: {name: 'goals against', tab: 'Goals against', avg: p => p.gaa, high: p => p.highs.ga,
+       val: (p, i) => G_(p, i)[4] || 0, po: e => e[1], low: true,
+       scale: () => deckScale(GOALIES, p => p.highs.ga, 1, 5), step: 1},
+  toi: {name: 'minutes in net', tab: 'Ice time', avg: p => r1(p.toi / (p.gp || 1)),
+        high: p => Math.max(0, ...(p.glog || []).map(g => g[2] || 0)),
+        val: (p, i) => G_(p, i)[2] || 0, po: e => e[2],
+        scale: () => 70, step: 20},
+};
+const metricsOf = p => p.kind === 'g' ? METRICS_G : METRICS_S;
+const metricKey = p => p.kind === 'g' ? (METRICS_G[GMETRIC] ? GMETRIC : 'sa')
+                                      : (METRICS_S[METRIC] ? METRIC : 'pts');
+const SCALE = {};
+
+/* Every game his team played while he was on it, not just the ones he appeared in --
+   so a backup goalie's season looks like a backup's, holes and all. Derived from the
+   [team, game] pointers in the log plus the team fixture lists the payload already
+   ships. A traded player's calendar is his first team's games up to the day he first
+   played for the second, then the second's. */
+function calendar(p){
+  const g = p.glog || [];
+  if (!g.length) return [];
+  const firstAt = {}, order = [], played = {};
+  g.forEach((x, li) => {
+    if (!(x[0] in firstAt)) { firstAt[x[0]] = li; order.push(x[0]); }
+    played[x[0] + ':' + x[1]] = li;
+  });
+  const dateOf = (ti, gi) => {
+    const ab = ((p.teams || [])[ti] || {}).t;
+    const gm = ((TEAMS[ab] || {}).games || [])[gi];
+    return gm ? gm.date : '';
+  };
+  const out = [];
+  order.forEach((ti, n) => {
+    const ab = ((p.teams || [])[ti] || {}).t;
+    const games = (TEAMS[ab] || {}).games || [];
+    const from = n === 0 ? '' : dateOf(ti, g[firstAt[ti]][1]);
+    const to = n === order.length - 1 ? ''
+             : dateOf(order[n + 1], g[firstAt[order[n + 1]]][1]);
+    games.forEach((gm, gi) => {
+      if (from && gm.date < from) return;
+      if (to && gm.date >= to) return;
+      const li = played[ti + ':' + gi];
+      out.push({ti, gi, li: li === undefined ? -1 : li});
+    });
+  });
+  return out;
+}
+
+const PO_ROUNDS = ['1st Round', '2nd Round', 'Conference Final', 'Stanley Cup Final'];
+function slotsOf(p){
+  const CAL = calendar(p);
+  const PO = POON ? (p.polog || []) : [];
+  const SEASON = CAL;
+  const GAP = (PO.length && SEASON.length) ? 2 : 0;
+  return {CAL, PO, SEASON, GAP,
+          SLOTS: SEASON.concat(Array.from({length: GAP}, () => ({gap: true})),
+                               PO.map((_, i) => ({po: i})))};
+}
+
+/* The result of one of his games: the team's for a skater, his own decision for a
+   goalie -- a backup who came in for the third period did not lose the game. */
+function resultOf(p, slot, PO){
+  if (slot.po !== undefined){
+    const e = PO[slot.po] || [];
+    return p.kind === 'g' ? e[5] : e[8];
+  }
+  if (p.kind === 'g'){
+    const dec = G_(p, slot.li)[5];
+    return dec === 'W' ? 'W' : dec === 'L' ? 'L' : dec === 'O' ? 'OTL' : '';
+  }
+  const ab = ((p.teams || [])[slot.ti] || {}).t;
+  const g = ((TEAMS[ab] || {}).games || [])[slot.gi];
+  return g ? g.res : '';
+}
+
+function logSvg(p, m){
+  const Ms = metricsOf(p), M = Ms[m];
+  const L = p.log || [];
+  if (!L.length || !M) return '';
+  const {PO, SEASON, GAP, SLOTS} = slotsOf(p);
+  if (!SLOTS.length) return '';
+  const key = p.kind + m;
+  const CAP = SCALE[key] || (SCALE[key] = M.scale());
+  const W = 1000, H = 150;
+  const bw = W / SLOTS.length;
+  const avg = M.avg(p), high = M.high(p);
+  const y = v => H - Math.min(v, CAP) / CAP * H;
+  const x = i => (i*bw).toFixed(2), w = Math.max(1.2, bw-.8).toFixed(2);
+  const stacked = !!M.split && LOGMODE === 'split';
+  // "Good" is above the average for everything except goals against.
+  const good = v => M.low ? v <= avg : v >= avg;
+  let above = 0, over = 0, peakV = -1, peakC = -1;
+
+  const bar = (c, v, parts, isPo) => {
+    if (good(v)) above++;
+    if (v > CAP) over++;
+    if (!M.low && v > peakV){ peakV = v; peakC = c; }
+    let seg = '';
+    if (v <= 0){
+      // A night with nothing in it still happened: a short pale stub, so it cannot be
+      // mistaken for a game he missed (which leaves only a faint tick).
+      seg = `<rect x="${x(c)}" y="${(H - 2.4).toFixed(1)}" width="${w}" height="2.4"
+        fill="${stacked ? 'rgba(232,236,245,.28)' : M.low ? 'var(--win)' : 'rgba(224,85,74,.55)'}"/>`;
+    } else if (!parts){
+      const yy = y(v);
+      const gold = !isPo && !M.low && v >= high;
+      seg = `<rect x="${x(c)}" y="${yy.toFixed(1)}" width="${w}"
+        height="${Math.max(0.6, H - yy).toFixed(1)}" rx="1.5"
+        fill="${gold ? 'var(--gold)' : good(v) ? 'var(--win)' : 'var(--loss)'}"
+        opacity="${gold ? 1 : .82}"/>`;
+    } else {
+      // Over the cap, the segments are squashed to fit rather than clipped, so the mix
+      // stays true even when the total cannot be shown.
+      const k = Math.min(v, CAP) / (v || 1);
+      let acc = 0;
+      parts.forEach((val, n) => {
+        if (!(val > 0)) return;
+        const y0 = y(acc * k), y1 = y((acc + val) * k);
+        seg += `<rect x="${x(c)}" y="${y1.toFixed(1)}" width="${w}"
+          height="${Math.max(0.6, y0 - y1).toFixed(1)}" fill="${M.keys[n][1]}"/>`;
+        acc += val;
+      });
+      if (!isPo && v >= high) seg += `<rect x="${x(c)}" y="${(v > CAP ? 3.4 : y(v)).toFixed(1)}"
+        width="${w}" height="3" fill="var(--gold)"/>`;
+    }
+    if (isPo) seg += `<rect x="${x(c)}" y="${(H - 2.6).toFixed(1)}" width="${w}" height="2.6"
+      fill="var(--gold)" opacity=".85"/>`;
+    if (v > CAP) seg += `<rect x="${x(c)}" y="0" width="${w}" height="3" fill="var(--ink)"/>`;
+    return seg;
+  };
+
+  const bars = SLOTS.map((slot, c) => {
+    if (slot.gap) return '';
+    if (slot.po !== undefined){
+      const e = PO[slot.po] || [];
+      return bar(c, M.po(e) || 0, stacked ? M.poSplit(e) : null, true);
+    }
+    if (slot.li < 0) return `<rect x="${x(c)}" y="${(H - 1.4).toFixed(1)}" width="${w}"
+      height="1.4" fill="rgba(150,166,205,.22)"/>`;
+    return bar(c, M.val(p, slot.li) || 0, stacked ? M.split(p, slot.li) : null, false);
+  }).join('');
+
+  const poX = (PO.length && SEASON.length) ? (SEASON.length + GAP / 2) * bw : null;
+  const poDiv = poX === null ? '' :
+    `<line x1="${poX.toFixed(2)}" y1="0" x2="${poX.toFixed(2)}" y2="${H}"
+      stroke="var(--gold)" stroke-width="1" stroke-dasharray="4 3" opacity=".5"
+      vector-effect="non-scaling-stroke"/>`;
+
+  let grid = '', labels = '';
+  for (let v = M.step; v < CAP; v += M.step)
+    grid += `<line x1="0" y1="${y(v).toFixed(1)}" x2="${W}" y2="${y(v).toFixed(1)}"
+      stroke="rgba(150,166,205,.12)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  const lab = (v, txt, cls) =>
+    `<span class="arclbl ${cls||''}" style="top:${(y(v)/H*100).toFixed(2)}%">${txt}</span>`;
+  for (let v = M.step; v <= CAP; v += M.step) labels += lab(v, v);
+  labels += lab(avg, avg, 'zero');
+
+  if (peakC >= 0 && peakV > 0){
+    const f = (peakC + .5) / SLOTS.length;
+    const top = y(peakV) / H * 100;
+    const tc = readable(winColor(TEAMS[p.team] || {}), 4.5);
+    labels += `<b class="logpk" style="color:${tc};border-color:${tc};
+      left:calc(34px + (100% - 34px) * ${f.toFixed(4)});top:max(29px,${top.toFixed(2)}%);
+      transform:translate(-50%,-100%) translateY(-6px)">${peakV}</b>`;
+  }
+
+  // Two strips under the plot, on the bars' own grid: the result of each game, then
+  // the nights worth a medal -- hat tricks and two-goal games for a skater, shutouts
+  // for a goalie.
+  const wlCell = SLOTS.map(() => ''), mkCell = SLOTS.map(() => '');
+  let hats = 0, twos = 0, shut = 0;
+  SLOTS.forEach((slot, c) => {
+    if (slot.gap || (slot.po === undefined && slot.li < 0)) return;
+    const res = resultOf(p, slot, PO);
+    wlCell[c] = res === 'W' ? 'w' : res === 'L' ? 'l' : res === 'OTL' ? 'o' : '';
+    if (p.kind === 'g'){
+      const ga = slot.po !== undefined ? (PO[slot.po] || [])[1] : G_(p, slot.li)[4];
+      if (ga === 0 && res === 'W'){ mkCell[c] = 'td'; if (slot.po === undefined) shut++; }
+    } else {
+      const g = slot.po !== undefined ? (PO[slot.po] || [])[1] : G_(p, slot.li)[3];
+      if (g >= 3){ mkCell[c] = 'td'; if (slot.po === undefined) hats++; }
+      else if (g === 2){ mkCell[c] = 'dd'; if (slot.po === undefined) twos++; }
+    }
+  });
+
+  const poLbl = poX === null ? '' :
+    `<i class="polbl" style="left:${(((SEASON.length + GAP / 2) / SLOTS.length) * 100)
+      .toFixed(3)}%">Playoffs</i>`;
+  const strips = `<div class="gstrips">
+    <div class="gstrip"><span class="glab">${p.kind === 'g' ? 'Decision' : 'Result'}</span>${
+      wlCell.map(k => `<i class="${k}"></i>`).join('')}</div>
+    <div class="gstrip"><span class="glab">${p.kind === 'g' ? 'Shutout' : 'Goals'}</span>${
+      mkCell.map(k => `<i class="${k}"></i>`).join('')}</div>
+  </div>`;
+
+  const legend = stacked
+    ? M.keys.map(k => `<span><i class="dot" style="background:${k[1]}"></i>${k[0]}</span>`).join('')
+    : `<span><i class="dot" style="background:var(--win)"></i>${M.low ? 'at or under' : 'at or above'} ${avg}
+         <b>${above}</b></span>
+       <span><i class="dot" style="background:var(--loss)"></i>${M.low ? 'over' : 'below'}</span>`;
+  const shown = (SEASON.length ? L.length : 0) + PO.length;
+  const missed = SEASON.length ? SEASON.length - L.length : 0;
+  const tail = `${shown} of ${SEASON.length + PO.length} games played${
+    missed ? ` · <b>${missed}</b> without him` : ''}${
+    PO.length ? ` · <b>${PO.length}</b> in the playoffs` : ''} · same 0–${CAP} scale on every card`;
+
+  return `<div class="arcbox loghook">${labels}<span class="wlwrap">${poLbl}</span>
+  <svg class="log" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${grid}${poDiv}<rect class="loghl" x="0" y="0" width="0" height="${H}"
+      fill="rgba(255,255,255,.13)" pointer-events="none"/>${bars}
+    <line x1="0" y1="${y(avg).toFixed(1)}" x2="${W}" y2="${y(avg).toFixed(1)}"
+      stroke="rgba(232,236,245,.6)" stroke-width="1.1" stroke-dasharray="5 4"
+      vector-effect="non-scaling-stroke"/>
+  </svg></div>${strips}
+  <div class="mixlab" style="margin-top:4px">${legend}
+    ${M.low ? '' : `<span><i class="dot" style="background:var(--gold)"></i>best
+      <b>${high}</b>${over ? ' — above the scale' : ''}</span>`}
+    <span><i class="dot" style="background:#7ce8ae"></i>won
+      <i class="dot" style="background:var(--otl);margin-left:7px"></i>OT loss
+      <i class="dot" style="background:#ff9089;margin-left:7px"></i>lost</span>
+    ${hats ? `<span><i class="dot" style="background:var(--gold);border-radius:50%"></i
+      >hat tricks <b>${hats}</b></span>` : ''}
+    ${twos ? `<span><i class="dot" style="background:#c8d2e2;border-radius:50%"></i
+      >two-goal games <b>${twos}</b></span>` : ''}
+    ${shut ? `<span><i class="dot" style="background:var(--gold);border-radius:50%"></i
+      >shutouts <b>${shut}</b></span>` : ''}
+    <span style="margin-left:auto;color:var(--dim)">${tail}</span>
+  </div>`;
+}
+
+/* The header carries the tabs, so switching metric replaces this whole block. */
+function logPanel(p, m){
+  const Ms = metricsOf(p), M = Ms[m];
+  const modes = M && M.split
+    ? `<span class="ltabs mtabs">${[['split','Split'],['avg','Avg']].map(k =>
+        `<button class="ltab ${k[0] === LOGMODE ? 'on' : ''}" onclick="setLogMode('${k[0]}')"
+          >${k[1]}</button>`).join('')}</span>`
+    : '';
+  const parts = (p.polog && p.polog.length)
+    ? `<span class="ltabs mtabs"><button class="ltab ${POON ? 'on' : ''}"
+         onclick="togglePo()" title="Add his playoff run to the end of the chart"
+         >Playoffs</button></span>`
+    : '';
+  return `<div class="loghd">
+    <span class="kick">Every game, ${M ? M.name : ''}</span>${modes}${parts}
+    <span class="ltabs">${Object.keys(Ms).map(k =>
+      `<button class="ltab ${k === m ? 'on' : ''}" onclick="setMetric('${k}')"
+        >${Ms[k].tab}</button>`).join('')}</span>
+  </div>${logSvg(p, m)}`;
+}
+
+/* ---------- the rink ----------
+   Every located shot of his regular season, one dot each -- a few hundred, so there is
+   no need to bin them the way a basketball shot chart must. The build rotates every
+   shot so it travels towards the net on the RIGHT, whichever end his team was attacking
+   that period, so a season of games reads as one attacking zone.
+
+   Real NHL dimensions in feet: red line to end boards 100, 85 wide, goal line 11 from
+   the boards, blue line 25 from centre, end-zone faceoff dots 20 out from the goal line
+   and 22 either side of centre, circles of 15, corners of 28. */
+const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+function unpackShots(s){
+  const out = [];
+  for (let i = 0; i + 2 < (s || '').length; i += 3){
+    const n = B62.indexOf(s[i]) * 3844 + B62.indexOf(s[i+1]) * 62 + B62.indexOf(s[i+2]);
+    const k = n % 3, q = (n - k) / 3;
+    out.push([Math.floor(q / 87), q % 87 - 43, k]);
+  }
+  return out;
+}
+const RINK = `
+  <path class="rk-board" d="M0 -42.5 H72 A28 28 0 0 1 100 -14.5 V14.5 A28 28 0 0 1 72 42.5 H0"/>
+  <path class="rk-red" d="M0 -42.5 V42.5"/>
+  <path class="rk-red" d="M0 -15 A15 15 0 0 1 0 15"/>
+  <path class="rk-blue" d="M25 -42.5 V42.5"/>
+  <path class="rk-red" d="M89 -36.75 V36.75"/>
+  <circle class="rk-red" cx="69" cy="-22" r="15"/>
+  <circle class="rk-red" cx="69" cy="22" r="15"/>
+  <circle class="rk-dot" cx="69" cy="-22" r="1"/><circle class="rk-dot" cx="69" cy="22" r="1"/>
+  <circle class="rk-dot" cx="20" cy="-22" r="1"/><circle class="rk-dot" cx="20" cy="22" r="1"/>
+  <path class="rk-crease" d="M89 -4 H84.5 A4.5 4.5 0 0 0 84.5 4 H89 Z"/>
+  <rect class="rk-net" x="89" y="-3" width="3.3" height="6" rx=".8"/>`;
+
+function rinkChart(p){
+  const S = unpackShots(p.shots);
+  if (!S.length) return '';
+  const gk = p.kind === 'g';
+  let goals = 0, on = 0, miss = 0;
+  S.forEach(s => { if (s[2] === 1) goals++; else if (s[2] === 0) on++; else miss++; });
+  /* A shot from his own half -- a dump-in or a clearance the goalie had to handle, which
+     the league counts as a shot on goal -- is stored on the red line. Drawn there, they
+     stacked into a column that read as a hot spot; they are counted instead. */
+  const far = S.filter(s => s[0] <= 0 && s[2] !== 2).length;
+  // Misses underneath, saved shots over them, goals on top: the goals are the story.
+  const order = [2, 0, 1];
+  const dots = order.map(k => S.filter(s => s[2] === k && s[0] > 0).map(([x, y]) =>
+      k === 2 ? `<circle cx="${x}" cy="${y}" r=".8" class="sh-miss"/>`
+    : k === 0 ? `<circle cx="${x}" cy="${y}" r="1.05" class="sh-save"/>`
+    : `<circle cx="${x}" cy="${y}" r="1.55" class="${gk ? 'sh-against' : 'sh-goal'}"/>`
+  ).join('')).join('');
+  const key = gk
+    ? `<span class="cramp"><i class="dot" style="background:var(--loss);border-radius:50%"></i>goal
+         <i class="dot sh-k"></i>saved</span>`
+    : `<span class="cramp"><i class="dot" style="background:var(--goal);border-radius:50%"></i>goal
+         <i class="dot sh-k"></i>on target <i class="dot" style="background:rgba(150,166,205,.4);
+         border-radius:50%"></i>missed</span>`;
+  return `<div class="panel col" style="padding:10px 12px">
+    <div class="courthd"><span class="kick">${gk ? 'Every shot he faced' : 'Every shot he took'}</span>
+      ${key}
+      <span class="rstat" title="${far ? `${far} on goal from behind the red line, not drawn` : ''}"
+        ><b>${goals + on}</b> on goal · <b>${goals}</b> ${gk ? 'beat him' : 'scored'}${
+        far ? ` · ${far} from ${gk ? 'their' : 'his'} own half` : ''}</span></div>
+    <svg class="court rink" viewBox="-3 -46 106 92" preserveAspectRatio="xMidYMid meet">
+      ${RINK}${dots}
+    </svg>
+  </div>`;
+}
+
+/* Playoff value against the regular-season one; within a hair reads as level. */
+function delta(po, rs, low, digits = 1){
+  if (po == null || rs == null) return '';
+  const k = Math.pow(10, digits);
+  const d = Math.round((po - rs) * k) / k;
+  if (!isFinite(d)) return '';
+  const better = low ? d < 0 : d > 0;
+  const cls = d === 0 ? 'fl' : better ? 'up' : 'dn';
+  const txt = (d > 0 ? '+' : '−') + Math.abs(d).toFixed(digits).replace(/^0\./, digits > 1 ? '.' : '0.');
+  return `<span class="dlt ${cls}" title="vs regular season">${d === 0 ? 'level' : txt}</span>`;
+}
+
+/* A skater's points, by who did what; a goalie's shots, by what became of them. */
+function mixBar(p){
+  if (p.kind === 'g'){
+    const sv = p.sv, ga = p.ga, tot = Math.max(1, sv + ga);
+    return `<div class="mix"><i style="width:${(sv/tot*100).toFixed(2)}%;background:var(--save)"></i
+      ><i style="width:${(ga/tot*100).toFixed(2)}%;background:var(--loss)"></i></div>
+      <div class="mixlab">
+        <span><i class="dot" style="background:var(--save)"></i>saved <b>${fmt(sv)}</b></span>
+        <span><i class="dot" style="background:var(--loss)"></i>beat him <b>${ga}</b></span>
+        <span>of <b>${fmt(p.sa)}</b> shots faced</span></div>`;
+  }
+  const tot = Math.max(1, p.g + p.a1 + p.a2);
+  const seg = (v, c) => `<i style="width:${(v/tot*100).toFixed(2)}%;background:${c}"></i>`;
+  return `<div class="mix">${seg(p.g,'var(--goal)')}${seg(p.a1,'var(--a1)')}${seg(p.a2,'var(--a2)')}</div>
+  <div class="mixlab">
+    <span><i class="dot" style="background:var(--goal)"></i>goals <b>${p.g}</b></span>
+    <span><i class="dot" style="background:var(--a1)"></i>primary assists <b>${p.a1}</b></span>
+    <span><i class="dot" style="background:var(--a2)"></i>secondary assists <b>${p.a2}</b></span>
+    ${p.ppp ? `<span style="margin-left:auto">power play <b>${p.ppp}</b>${
+      p.shp ? ` · short-handed <b>${p.shp}</b>` : ''}</span>` : ''}
+  </div>`;
+}
+
+
+
+/* ---------- card renderers ---------- */
+const fmt = n => Number(n).toLocaleString('en-US');
+const ord = n => n + (['th','st','nd','rd'][((n % 100) - 20) % 10] || ['th','st','nd','rd'][n % 100] || 'th');
+const rec3 = (w, l, o) => `${w}-${l}-${o}`;
+/* ".921", the way hockey writes a save percentage. */
+const svs = v => v == null ? '–' : Number(v).toFixed(3).replace(/^0/, '');
+
+function coverCard(){
+  const champ = TEAMS[D.champion];
+  const teams = D.teams.length, players = D.players.length + GOALIES.length;
+  const games = D.teams.reduce((n,t) => n + t.games.filter(g => g.res).length, 0) / 2;
+  const sched = D.teams.reduce((n,t) => n + t.games.length, 0) / 2;
+  return `<div class="in"><div class="cover">
+    <div class="coverbg"></div>
+    <div class="kick">A Guy With A Scarf · Season Film</div>
+    <h1>The NHL ${SEASON} season,<br><em>card by card</em></h1>
+    <p>${games ? `${SEASON}, read end to end: the ${D.players.length} leading scorers and the
+      ${GOALIES.length} goalies with the most wins, the charts that rank them, then all
+      ${teams} teams in order of points and the table they finished on.
+      ${champ ? `<b>${tlink(champ.abbr, esc(champ.name))}</b> lifted the Stanley Cup.` : ''}`
+      : `${SEASON} before the puck drops: all ${teams} teams and the published schedule of
+      ${fmt(sched)} games, ${Math.round(sched * 2 / teams)} each. The player cards and the
+      charts fill in as the season is played.`}</p>
+    <div class="cstat">
+      <div><div class="v">${teams}</div><div class="k">Teams</div></div>
+      <div><div class="v">${fmt(games || sched)}</div><div class="k">${games ? 'Games' : 'Games scheduled'}</div></div>
+      <div><div class="v">${players}</div><div class="k">Player cards</div></div>
+      <div><div class="v">${CARDS.length}</div><div class="k">Cards in all</div></div>
+    </div>
+    <p style="font-size:12px;margin-top:4px">Press <kbd>→</kbd> or swipe to begin.</p>
+  </div></div>`;
+}
+
+function teamCard(t){
+  const champ = t.po && t.po.outcome === 'CHAMPIONS';
+  const special = t.games.filter(g => g.venue);
+  const po = t.po ? `<div class="box pobox">
+      <div class="k">Playoffs — ${esc(champ ? 'Stanley Cup champions' : t.po.outcome)}
+        <span style="color:var(--dim)">(${t.po.w}-${t.po.l})</span></div>
+      ${t.po.rounds.map(r => `<div class="porow">
+        <span class="rd">${esc(r.round)}${r.opp ? ` <b style="font-weight:700;color:${
+          readable(winColor(TEAMS[r.opp] || {}), 4.5)}">${tlink(r.opp, esc((TEAMS[r.opp] || {}).nick || r.opp))}</b>` : ''}</span>
+        <span class="sc">${r.w}-${r.l}</span>
+        <span class="pogames">${r.games.map(g =>
+          `<i class="pog ${g.res === 'W' ? 'w' : 'l'}${g.end ? ' ot' : ''}"
+            title="${g.ha === 'H' ? 'home' : 'away'} ${g.us}-${g.them}${g.end ? ' (' + g.end + ')' : ''}">${g.res || ''}</i>`
+        ).join('')}</span></div>`).join('')}
+    </div>`
+    : t.w + t.l + t.otl ? `<div class="box"><div class="k">Playoffs</div>
+       <div style="font-size:12px;color:var(--dim);margin-top:3px">Did not qualify.</div></div>` : '';
+
+  const roster = t.roster.length ? `<div class="rost panel" style="padding:11px 12px">
+      <div class="rhd"><span>Who played</span>
+        <span class="ltabs">${ROSTKEY.map(k =>
+          `<button class="ltab ${k[0] === ROSTBY ? 'on' : ''}"
+            onclick="setRosterBy('${k[0]}')">${k[2]}</button>`).join('')}
+          <span class="rhk">season totals · skaters</span></span></div>
+      ${rosterDeck(t)}</div>` : '';
+  return teamBody(t, {roster, champ, special, po});
+}
+
+/* Points, goals, assists -- each keyed to the roster field it sorts by. */
+const ROSTKEY = [['pts', 'pts', 'Pts'], ['g', 'gl', 'Goals'], ['a', 'a', 'Assists']];
+let ROSTBY = 'pts';
+function setRosterBy(k){
+  if (k === ROSTBY) return;
+  ROSTBY = k;
+  paintRoster(cur);
+}
+function paintRoster(i){
+  const c = CARDS[i];
+  if (!c || c.kind !== 'team' || !cards[i]) return;
+  const el = cards[i].querySelector('.rdeck');
+  if (!el || el.dataset.by === ROSTBY) return;
+  el.outerHTML = rosterDeck(c.t);
+  const hd = cards[i].querySelector('.rhd .ltabs');
+  if (hd) hd.querySelectorAll('.ltab').forEach((b, n) =>
+    b.classList.toggle('on', ROSTKEY[n] && ROSTKEY[n][0] === ROSTBY));
+}
+
+/* Where a player's card is -- in the deck, or the unlisted one past its end -- as the
+   attributes an <a> needs. */
+function cardLink(id){
+  const deck = CARD_OF_PLAYER[id], k = TAIL_OF[id];
+  const at = deck != null ? deck + 1 : k != null ? CARDS.length + k + 1 : null;
+  const on = deck != null ? `onclick="go(${deck});return false"`
+           : k != null ? `onclick="goTail(${k});return false"` : 'onclick="return false"';
+  return `href="${at ? '#' + at : '#'}" ${on}`;
+}
+
+function rosterDeck(t){
+  const [, key] = ROSTKEY.find(k => k[0] === ROSTBY) || ROSTKEY[0];
+  const rows = t.roster.map((r, i) => [r, i])
+    .sort((a, b) => (b[0][key] || 0) - (a[0][key] || 0) || a[1] - b[1])
+    .map(x => x[0]);
+  return `<div class="rdeck" data-by="${ROSTBY}">${rows.slice(0, 18).map(r => {
+        const nm = NAMES[r.id] || ['—', '', ''];
+        const ini = esc(nm[0]).split(' ').map(w => w[0] || '').join('').slice(0, 2);
+        return `<a class="pmini" ${cardLink(r.id)} style="--tc:${winColor(t)}"
+            title="${esc(nm[0])} · ${esc(nm[1])} · ${r.g} games · ${r.gl} G, ${r.a} A, ${r.pts} P · ${r.toi} min a game">
+          <span class="pmshot"><i class="pmfb">${ini}</i><img src="${head(r.id)}" alt=""
+            loading="lazy" onerror="this.style.display='none'">${nm[2]
+              ? `<b class="pmwm">${esc(nm[2])}</b>` : ''}
+            <b class="pmtot">${r.g}<i>games</i></b>
+            <span class="pmpills">${ROSTKEY.map(k =>
+              `<b class="${k[0] === ROSTBY ? 'on' : ''}">${r[k[1]]}<i>${k[0]}</i></b>`
+              ).join('')}</span></span>
+          <span class="pmname"><span>${esc(nm[0])}</span>${nm[2]
+            ? `<b class="pmno">${esc(nm[2])}</b>` : ''}</span>
+        </a>`;
+      }).join('')}</div>`;
+}
+
+function teamBody(t, {roster, champ, special, po}){
+  const played = t.w + t.l + t.otl;
+  const goalies = (t.goalies || []).length ? `<div class="box">
+      <div class="rrow hd gkrow"><span>In goal</span><span class="n">GP</span>
+        <span class="n">W-L-OT</span><span class="n">SV%</span><span class="n">GAA</span></div>
+      ${t.goalies.map(g => `<div class="rrow gkrow">
+        <span class="nm">${plink(g.id, esc((NAMES[g.id] || ['—'])[0]))}</span>
+        <span class="n">${g.g}</span><span class="n">${rec3(g.w, g.l, g.o)}</span>
+        <span class="n">${svs(g.svp)}</span><span class="n">${g.gaa == null ? '–' : g.gaa.toFixed(2)}</span>
+      </div>`).join('')}</div>` : '';
+  return `<div class="in">
+    <div class="tgrid">
+      <div class="tid">
+        <div class="thead">
+          <img class="crest" src="${crest(t.abbr)}" alt="${esc(t.name)} crest" loading="lazy">
+          <div class="tname">
+            <div class="tcity">${esc(t.city)}</div>
+            <div class="tnick">${esc(t.nick)}</div>
+            <div class="trec">
+              <span class="big">${played ? rec3(t.w, t.l, t.otl) : `${t.games.length} games`}</span>
+              ${played ? `<span class="badge pts">${t.pts} pts</span>` : ''}
+              ${t.seed ? `<span class="badge seed">${t.conf} ${ord(t.seed)}</span>` : ''}
+              ${champ ? `<span class="badge champ">★ Stanley Cup</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="tcol">
+          ${played ? `<div class="box"><div class="kv">
+            <div><div class="v">${t.gfpg}</div><div class="k">Scored a game</div></div>
+            <div><div class="v">${t.gapg}</div><div class="k">Allowed a game</div></div>
+            <div><div class="v" style="color:${t.diff >= 0 ? 'var(--win)' : 'var(--loss)'}">${sgn(t.diff)}</div>
+              <div class="k">Goal diff</div></div>
+            <div><div class="v">${t.pct}<small>%</small></div><div class="k">Points won</div></div>
+          </div></div>
+          <div class="box"><div class="kv">
+            <div><div class="v">${t.home}</div><div class="k">At home</div></div>
+            <div><div class="v">${t.away}</div><div class="k">On the road</div></div>
+            <div><div class="v">${t.streak.W}</div><div class="k">Best run</div></div>
+            <div><div class="v">${t.streak.L}</div><div class="k">Winless run</div></div>
+          </div></div>` : ''}
+          ${(t.best && t.worst) ? `<div class="box"><div class="kv" style="grid-template-columns:1fr 1fr">
+            <div><div class="v" style="font-size:15px">${t.best.us}-${t.best.them}
+              <small>v ${tlink(t.best.opp, esc(t.best.opp))}</small></div>
+              <div class="k">Biggest win · ${WHEN(t.best.date)}</div></div>
+            <div><div class="v" style="font-size:15px">${t.worst.us}-${t.worst.them}
+              <small>v ${tlink(t.worst.opp, esc(t.worst.opp))}</small></div>
+              <div class="k">Heaviest defeat · ${WHEN(t.worst.date)}</div></div>
+          </div></div>` : ''}
+          ${goalies}
+          ${po}
+          ${special.length ? `<div class="box"><div class="k">Away from home ice</div>
+            <div style="font-size:11.5px;line-height:1.6;margin-top:4px">
+            ${special.map(g => `<div>${esc(g.venue)} <span style="color:var(--dim)">v ${esc(g.opp)} ·
+              ${WHEN(g.date)}${g.res ? ` · ${g.res === 'OTL' ? 'OT loss' : g.res} ${g.us}-${g.them}` : ''}</span></div>`).join('')}
+            </div></div>` : ''}
+        </div>
+      </div>
+      <div class="tright">${roster}</div>
+      <div class="panel arcwrap tarc">
+        <div class="kick" style="margin-bottom:8px">The season arc — points above a .500 pace</div>
+        ${arcSvg(t)}
+      </div>
+    </div>
+  </div>`;
+}
+
+function bioLine(p){
+  return [p.pos === 'G' ? 'Goalie' : {C:'Centre', L:'Left wing', R:'Right wing', D:'Defence'}[p.pos] || p.pos,
+          p.height, p.weight, p.age ? p.age + ' yrs' : null, p.nat,
+          p.hand ? (p.pos === 'G' ? 'catches ' : 'shoots ') + p.hand : null,
+          p.draft ? (p.draft === 'undrafted' ? 'undrafted' : 'drafted ' + p.draft) : null]
+    .filter(Boolean).join(' · ');
+}
+
+function bestOpp(p){
+  return p.highs.opp ? ` ${p.highs.ha === 'H' ? 'vs' : '@'} <b style="font-weight:700;color:${
+    readable(winColor(TEAMS[p.highs.opp] || {}), 4.5)}">${esc(p.highs.opp)}</b>` : ' night';
+}
+
+function playerCard(p){
+  const t = TEAMS[p.team] || {};
+  const traded = p.teams && p.teams.length > 1;
+  const gk = p.kind === 'g';
+  const wl = p.wl || [0, 0, 0];
+  const e = poEnding(t);
+  const m = metricKey(p);
+  const stats = gk ? `
+        <div class="box"><span class="rskick">Regular season</span><div class="kv">
+          <div><div class="v">${p.w}</div><div class="k">Wins — no. ${p.rank}</div></div>
+          <div><div class="v vg">${pie((p.svp - .85) / .1 * 100, 'var(--save)')}<span>${svs(p.svp)}</span></div>
+            <div class="k">Save %</div></div>
+          <div><div class="v">${p.gaa.toFixed(2)}</div><div class="k">Goals against avg</div></div>
+          <div><div class="v vg">${pie(p.gs / (p.gp || 1) * 100, 'var(--win)')}<span>${p.gp}</span></div>
+            <div class="k">Games · ${p.gs} starts</div></div>
+          <div><div class="v">${p.so}</div><div class="k">Shutouts</div></div>
+          <div><div class="v">${fmt(p.sv)}</div><div class="k">Saves</div></div>
+        </div></div>
+        <div class="box"><div class="kv">
+          <div><div class="v">${rec3(p.w, p.l, p.otl)}</div><div class="k">W-L-OT</div></div>
+          <div><div class="v">${fmt(p.sa)}</div><div class="k">Shots faced</div></div>
+          <div><div class="v">${p.ga}</div><div class="k">Goals against</div></div>
+          <div><div class="v">${p.qs}</div><div class="k" title="Started, and saved above the league average or allowed two or fewer">Quality starts</div></div>
+          <div><div class="v">${fmt(Math.round(p.toi))}</div><div class="k">Minutes</div></div>
+          <div><div class="v">${p.highs.sv}</div><div class="k" title="Most saves in a game">Most saves${bestOpp(p)}</div></div>
+        </div></div>`
+    : `
+        <div class="box"><span class="rskick">Regular season</span><div class="kv">
+          <div><div class="v">${p.pts}</div><div class="k">Points — no. ${p.rank}</div></div>
+          <div><div class="v">${p.g}${p.highs.g > 1 ? `<small class="mx">max ${p.highs.g}</small>` : ''}</div>
+            <div class="k">Goals</div></div>
+          <div><div class="v">${p.a}${p.highs.a > 1 ? `<small class="mx">max ${p.highs.a}</small>` : ''}</div>
+            <div class="k">Assists</div></div>
+          <div><div class="v vg">${pie(wl[0] / (p.gp || 1) * 100, 'var(--win)')}<span>${p.gp}</span></div>
+            <div class="k">Games · ${rec3(wl[0], wl[1], wl[2])}</div></div>
+          <div><div class="v">${fmtToi(p.toi)}${p.highs.toi ? `<small class="mx">max ${fmtToi(p.highs.toi)}</small>` : ''}</div>
+            <div class="k">Ice time avg</div></div>
+          <div><div class="v" style="color:${p.pm > 0 ? 'var(--win)' : p.pm < 0 ? 'var(--loss)' : 'inherit'}">${sgn(p.pm)}</div>
+            <div class="k">Plus / minus</div></div>
+        </div></div>
+        <div class="box"><div class="kv">
+          <div><div class="v vg">${pie(p.shpct * 4, 'var(--goal)')}<span style="color:var(--goal)">${p.shpct}<small>%</small></span></div>
+            <div class="k">Shooting · ${p.sog} shots</div></div>
+          <div><div class="v">${p.ppp}</div><div class="k">Power play pts</div></div>
+          <div><div class="v">${p.gwg}</div><div class="k">Game winners</div></div>
+          ${p.pos === 'C' && p.fo != null
+            ? `<div><div class="v vg">${pie(p.fo, 'var(--a1)')}<span>${p.fo}<small>%</small></span></div><div class="k">Faceoffs won</div></div>`
+            : `<div><div class="v">${p.blk}</div><div class="k">Blocked shots</div></div>`}
+          <div><div class="v">${p.hits}</div><div class="k">Hits</div></div>
+          <div><div class="v">${p.highs.pts}</div><div class="k" title="Best game of the season">Best${bestOpp(p)}</div></div>
+        </div></div>`;
+  const poRow = !p.po ? (p.poMiss ? `<div class="box pomiss">Did not appear in the playoffs — ${esc(p.team)} ${esc(p.poMiss)}</div>` : '')
+    : gk ? `<div class="box pobar"><div class="kv">
+          <div><div class="v potitle">Playoffs</div></div>
+          <div><div class="v">${p.po.w}-${p.po.l}</div><div class="k">Won-lost</div></div>
+          <div><div class="v">${p.po.gp}</div><div class="k">Games</div></div>
+          <div><div class="v">${svs(p.po.svp)}${delta(p.po.svp, p.svp, false, 3)}</div><div class="k">Save %</div></div>
+          <div><div class="v">${p.po.gaa.toFixed(2)}${delta(p.po.gaa, p.gaa, true, 2)}</div><div class="k">GAA</div></div>
+          <div><div class="v">${p.po.so}</div><div class="k">Shutouts</div></div>
+        </div></div>`
+    : `<div class="box pobar"><div class="kv">
+          <div><div class="v potitle">Playoffs</div></div>
+          <div><div class="v">${p.po.pts}</div><div class="k">Points</div></div>
+          <div><div class="v">${p.po.ppm.toFixed(2)}${delta(p.po.ppm, p.ppm, false, 2)}</div><div class="k">Points a game</div></div>
+          <div><div class="v vg">${pie(p.po.wl[0] / (p.po.gp || 1) * 100, 'var(--win)')}<span>${p.po.gp}</span></div>
+            <div class="k">Games · ${p.po.wl[0]}-${p.po.wl[1]}</div></div>
+          <div><div class="v">${p.po.g}<small> G</small> ${p.po.a}<small> A</small></div><div class="k">Goals · assists</div></div>
+          <div><div class="v">${fmtToi(p.po.toi)}${delta(p.po.toi, p.toi)}</div><div class="k">Ice time avg</div></div>
+        </div></div>`;
+  return `<div class="in">
+    <div class="pgrid">
+      <div class="pleft${p.shots ? '' : ' noshot'}">
+        <div class="pmeta">
+          <img src="${crest(p.team)}" alt="${esc(p.team)}" loading="lazy">
+          <div style="min-width:0">
+            <div class="pname">${esc(p.name)}</div>
+            <div class="psub">${[
+                p.jersey ? '#' + esc(p.jersey) : '',
+                traded ? `<span style="color:var(--acc)">${p.teams.map(x =>
+                  `${esc(x.t)} ${x.g}`).join(' → ')}</span>` : ''
+              ].filter(Boolean).join(' · ')}<span class="pdim">${
+                (p.jersey || traded) ? ' · ' : ''}${esc(bioLine(p))}</span></div>
+          </div>
+        </div>
+        <div class="shot">
+          <div class="rankno"${p.rank >= 100 ? ' style="--rw:16cqw"' : ''}>
+            <b>${p.rank}</b><em>${gk ? p.w : p.pts}</em><span>${gk ? 'wins' : 'points'}</span></div>
+          <div class="jerseybox" style="--tc:${winColor(t)};color:${winColor(t)}">
+            ${p.jersey ? `<b class="jerseyno">${esc(p.jersey)}</b>` : ''}
+            <span class="jteam">${tlink(p.team, esc(t.name || p.team))}</span>
+            <span class="jwl" title="${gk ? 'His own decisions: won-lost-overtime loss'
+                : `${traded ? 'His teams’' : esc(t.name || p.team) + '’s'} record in the ${p.gp} games he played`}"
+              >${gk ? rec3(p.w, p.l, p.otl) : rec3(wl[0], wl[1], wl[2])}<i class="jsep">·</i><i
+                class="jpo${e.champ ? ' champ' : ''}">${e.txt}</i></span></div>
+          <img src="${head(p.id)}" alt="${esc(p.name)}" loading="lazy"
+               onerror="this.style.display='none'">
+        </div>
+        ${rinkChart(p)}
+      </div>
+      <div class="pright">
+        <div class="rsgroup" style="--tc:${winColor(t)}">${stats}
+        </div>
+        ${poRow}
+        <div class="panel" style="padding:12px 15px;flex:0 0 auto">
+          <div class="kick" style="margin-bottom:6px">${gk ? 'What became of the shots' : 'Where the points came from'}</div>
+          ${mixBar(p)}
+        </div>
+        <div class="panel logwrap" style="padding:13px 15px" data-metric="${m}:${LOGMODE}:${POON ? 'po' : 'rs'}">
+          ${logPanel(p, m)}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+/* 21.4 minutes -> "21:24", the way a hockey box score writes ice time. */
+const fmtToi = v => { const m = Math.floor(v || 0), s = Math.round(((v || 0) - m) * 60);
+  return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, '0')}`; };
+
+function noPlayers(kick, title){
+  return `<div class="in">
+    <div class="kick">Chart · ${kick}</div>
+    <h2 style="font-size:clamp(19px,2.2vw,29px);font-weight:700;letter-spacing:-.02em">
+      ${title}</h2>
+    <p style="font-size:12px;color:var(--dim)">Nothing has been played in ${SEASON} yet —
+      this chart fills in once the puck drops.</p>
+  </div>`;
+}
+
+/* ---------- the ranking columns ----------
+   A top ten drawn as columns, the player standing at the foot of his own. Ranked over
+   everyone who played, not only the carded hundred. */
+const lead = (k, m) => (((D.leaders || {})[k] || {})[m] || []);
+const skRace = (key, word, verb) => ({
+  tabs: [['tot', 'Total'], ['avg', 'A game']],
+  rows: m => lead(key, m).map(r => ({
+    id: r[0], ab: r[1], v: m === 'avg' ? r[3] : r[2],
+    big: m === 'avg' ? r[3].toFixed(2).replace(/0$/, '') : fmt(r[2]),
+    lab: m === 'avg' ? 'a game' : word,
+    tip: `${fmt(r[2])} ${word}, ${r[3]} a game`,
+    sub: m === 'avg' ? `<b>${fmt(r[2])}</b> in ${r[4]}` : `<b>${r[3]}</b> a game`})),
+  note: m => m === 'avg'
+    ? `${word[0].toUpperCase() + word.slice(1)} a game, among everyone who played at least a quarter of the season.`
+    : `Total ${word}, not per game — so staying in the lineup counts. ${verb}`,
+});
+const RACES = {
+  race: {kick: 'the scoring race', h: () => `Who scored the most points, ${SEASON}`,
+         ...skRace('pts', 'points', 'The Art Ross Trophy goes to the leader.')},
+  goalrace: {kick: 'the goal race', h: () => `Who scored the most goals, ${SEASON}`,
+             ...skRace('g', 'goals', 'The Rocket Richard Trophy goes to the leader.')},
+  astrace: {kick: 'the assist race', h: () => `Who set up the most goals, ${SEASON}`,
+            ...skRace('a', 'assists', 'Primary and secondary assists count the same here.')},
+  gkrace: {kick: 'the goalies', h: () => `Who stood tallest in goal, ${SEASON}`,
+    tabs: [['w', 'Wins'], ['sv', 'Save %'], ['so', 'Shutouts']],
+    note: m => m === 'sv'
+      ? `Save percentage among goalies who played at least half as many games as the busiest.
+         The columns start at .880, not zero — the whole league lives in the top tenth.`
+      : m === 'so' ? `Games in which he did not concede a goal.`
+      : `Wins credited to the goalie. Every carded goalie is here, ordered as the deck is.`,
+    base: m => m === 'sv' ? 0.88 : 0,
+    rows: m => lead('gk', m).map(r => ({
+      id: r[0], ab: r[1], v: m === 'sv' ? r[3] : m === 'so' ? r[5] : r[2],
+      big: m === 'sv' ? svs(r[3]) : m === 'so' ? r[5] : r[2],
+      lab: m === 'sv' ? 'save %' : m === 'so' ? 'shutouts' : 'wins',
+      tip: `${r[2]} wins, ${svs(r[3])} save %, ${r[5]} shutouts in ${r[4]} games`,
+      sub: m === 'w' ? `<b>${svs(r[3])}</b> · ${r[4]} gp` : `<b>${r[2]}</b> wins in ${r[4]}`})),
+  },
+  nights: {
+    kick: 'the biggest nights', h: () => 'The ten biggest nights',
+    note: () => `Most points in one game, league-wide. Each column is split into the goals
+      he scored and the goals he set up, first pass and second. Hover or tap for the night.`,
+    rows: () => (D.nights || []).slice(0, 10).map((g, i) => ({
+      id: g.id, ab: g.team, v: g.pts, big: g.pts, lab: 'points', night: i,
+      tip: `${g.name} — ${g.pts} points against ${g.opp}`,
+      segs: [[g.g, 'var(--goal)'], [g.a1, 'var(--a1)'], [g.a2, 'var(--a2)']],
+      sub: `<b>${g.g}G ${g.a}A</b> ${g.h ? 'vs' : '@'} ${esc(g.opp)} · ${WHEN(g.date)}`})),
+  },
+};
+const RACEBY = {};
+Object.entries(RACES).forEach(([k, c]) => { if (c.tabs) RACEBY[k] = c.tabs[0][0]; });
+function setRaceBy(kind, k){
+  if (k === RACEBY[kind]) return;
+  RACEBY[kind] = k;
+  const i = CARDS.findIndex(c => c.kind === kind);
+  const el = i >= 0 && cards[i].querySelector('.racewrap');
+  if (el) el.outerHTML = raceBody(kind);
+}
+function raceCard(kind){
+  const cfg = RACES[kind];
+  if (!cfg.rows(RACEBY[kind]).length) return noPlayers(cfg.kick, cfg.h());
+  return `<div class="in">
+    <div class="kick">Chart · ${cfg.kick}</div>
+    <h2 style="font-size:clamp(19px,2.2vw,29px);font-weight:700;letter-spacing:-.02em">
+      ${cfg.h()}</h2>
+    ${raceBody(kind)}
+  </div>`;
+}
+function raceBody(kind){
+  const cfg = RACES[kind], mode = RACEBY[kind];
+  const top = cfg.rows(mode).slice(0, 10);
+  const base = cfg.base ? cfg.base(mode) : 0;
+  const max = Math.max(...top.map(r => r.v));
+  return `<div class="racewrap">
+    <div class="racehd">
+      <p>${cfg.note(mode).replace(/\s+/g, ' ')}</p>
+      ${cfg.tabs ? `<span class="ltabs">${cfg.tabs.map(k =>
+        `<button class="ltab ${k[0] === mode ? 'on' : ''}"
+          onclick="setRaceBy('${kind}','${k[0]}')">${k[1]}</button>`).join('')}</span>` : ''}
+    </div>
+    <div class="race">${top.map((r, i) => {
+      const t = TEAMS[r.ab] || {}, nm = (NAMES[r.id] || ['—'])[0];
+      const col = t.primary || 'var(--acc)';
+      let segs = '', topCol = col, acc = 0;
+      (r.segs || []).forEach(([v, c]) => {
+        if (v > 0) topCol = c || col;
+        segs += v <= 0 ? '' : `<i class="rseg" style="bottom:${(acc / r.v * 100).toFixed(2)}%;
+          height:${(v / r.v * 100).toFixed(2)}%;background:${c || 'transparent'}"></i>`;
+        acc += v;
+      });
+      const h = Math.max(6, (r.v - base) / Math.max(1e-9, max - base) * 92);
+      return `<div class="rcol">
+        <div class="rplot"><a class="rbar" ${cardLink(r.id)}${
+          r.night != null ? ` data-night="${r.night}"` : ''}
+          title="${esc(nm)} — ${esc(r.tip)}"
+          style="height:${h.toFixed(1)}%;--c:${col}">${segs}
+          <b class="rval" style="--ic:${ink(topCol)}">${
+            r.big}<i style="color:${ink(topCol)};opacity:.72">${r.lab}</i></b>
+          <span class="rfoot"><em class="rrk">${i + 1}</em>
+            <img src="${head(r.id)}" alt="" loading="lazy"
+              onerror="this.style.display='none'"></span></a></div>
+        <div class="rnm">
+          <span class="rwho">${plink(r.id, esc(shortName(nm)))}</span>
+          <i class="rteam">${tlink(r.ab, esc(t.name || r.ab))}</i>
+          <i class="rtot">${r.sub}</i></div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+/* The standings, by conference. The NHL's playoff line is not a position in this table
+   -- it is the top three of each division plus two wild cards -- so there is no cut
+   line: the teams that made it are in full colour and the rest are dimmed. */
+function ladderCard(){
+  const col = conf => {
+    const rows = D.teams.filter(t => t.conf === conf)
+      .sort((a,b) => (a.seed || 99) - (b.seed || 99) || b.pts - a.pts);
+    return `<div class="lcol"><div class="lrow hd"><span></span><span></span><span></span>
+        <span>W-L-OT</span><span>PTS</span><span>GD</span></div>${rows.map(t => `
+      <div class="lrow ${t.po ? '' : 'out'}">
+        <span class="rk" style="color:var(--dim);text-align:right">${t.seed || '–'}</span>
+        <img src="${crest(t.abbr)}" alt="" loading="lazy">
+        <span class="nm">${tlink(t.abbr, esc(t.nick))}
+          ${t.po && t.po.outcome === 'CHAMPIONS' ? '<b style="color:var(--gold)"> ★</b>' : ''}
+          <i class="ldiv">${esc(t.div)}</i></span>
+        <span style="text-align:right">${rec3(t.w, t.l, t.otl)}</span>
+        <span style="text-align:right;font-weight:700">${t.pts}</span>
+        <span style="text-align:right;color:${t.diff > 0 ? 'var(--win)' : 'var(--loss)'}">${sgn(t.diff)}</span>
+      </div>`).join('')}</div>`;
+  };
+  return `<div class="in">
+    <div class="kick">Chart · the standings</div>
+    <h2 style="font-size:clamp(19px,2.2vw,29px);font-weight:700;letter-spacing:-.02em">
+      How ${SEASON} finished</h2>
+    <p style="font-size:12px;color:var(--dim)">Conference position, record, points and goal
+      difference. Two points for a win, one for an overtime or shootout loss. Dimmed teams
+      missed the playoffs.</p>
+    <div class="ladder">
+      <div style="display:flex;flex-direction:column;min-height:0">
+        <div class="kick" style="margin-bottom:6px">Eastern Conference</div>${col('Eastern')}</div>
+      <div style="display:flex;flex-direction:column;min-height:0">
+        <div class="kick" style="margin-bottom:6px">Western Conference</div>${col('Western')}</div>
+    </div>
+  </div>`;
+}
+
+function poEnding(t){
+  const o = (t && t.po && t.po.outcome) || '';
+  if (!o) return {txt: 'Missed playoffs', champ: false, miss: true};
+  if (o === 'CHAMPIONS') return {txt: 'Stanley Cup', champ: true};
+  const phase = o.replace(/^(Lost|Won) the /, '')
+                 .replace(/^Stanley Cup Final$/, 'Cup Final')
+                 .replace(/^Conference Final$/, 'Conf Final')
+                 .replace(/^1st Round$/, 'Round 1').replace(/^2nd Round$/, 'Round 2');
+  return {txt: phase, champ: false};
+}
+
+function pie(pct, colour){
+  const p = Math.max(0, Math.min(100, +pct || 0));
+  const a = 2 * Math.PI * (p / 100) - Math.PI / 2;
+  const x = 12 + 10 * Math.cos(a), y = 12 + 10 * Math.sin(a);
+  return `<svg class="pie" viewBox="0 0 24 24" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" fill="rgba(150,166,205,.16)"/>
+    ${p >= 99.9
+      ? `<circle cx="12" cy="12" r="10" fill="${colour}"/>`
+      : p <= 0 ? ''
+      : `<path d="M12 12 L12 2 A10 10 0 ${p > 50 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)} Z"
+           fill="${colour}"/>`}
+  </svg>`;
+}
+
+const WHEN = d => {
+  if (!d) return '';
+  const [y, m, dd] = d.split('-');
+  return `${+dd} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]} ${y}`;
+};
+
+function ink(c){
+  let r, g, b;
+  let m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c);
+  if (m) [r, g, b] = m.slice(1).map(h => parseInt(h, 16));
+  else { m = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(c); if (!m) return '#fff';
+         [r, g, b] = m.slice(1).map(Number); }
+  return (0.2126*r + 0.7152*g + 0.0722*b) / 255 > 0.62 ? 'rgba(7,9,16,.9)' : '#fff';
+}
+
+/* A game's result as hockey writes it: W, L, or "OTL" -- and "OT" / "SO" beside it. */
+function resChip(res, us, them, end){
+  const c = res === 'W' ? 'var(--win)' : res === 'OTL' ? 'var(--otl)' : 'var(--loss)';
+  return `<b style="color:${c}">${res === 'OTL' ? 'L' : res || '–'} ${us}–${them}${end ? ' ' + end : ''}</b>`;
+}
+
+/* One skater's night, as the tooltip renders it -- the biggest-nights card and every
+   skater's game chart share it. */
+function nightTip(o){
+  return `<div class="tbig">${o.pts}<em> pts</em></div>
+    <div class="tnm">${esc(o.name)}</div>
+    <div class="trow tdim">${o.team} ${o.h ? 'vs' : '@'} ${o.opp} · ${resChip(o.res, o.us, o.them, o.end)}</div>
+    ${o.date ? `<div class="tdim">${WHEN(o.date)}</div>` : ''}
+    <div class="trow">${[[o.g, 'var(--goal)', o.g === 1 ? 'goal' : 'goals'],
+                         [o.a1, 'var(--a1)', 'primary'], [o.a2, 'var(--a2)', 'secondary']]
+      .map(([v, c, w]) => `<i class="dot" style="background:${c}"></i>${v} ${w}`).join(' ')}</div>
+    <div class="tdim">${o.sog} shots · ${fmtToi(o.toi)} on the ice${o.hits != null ? ` · ${o.hits} hits` : ''}</div>
+    ${o.g >= 3 ? `<div class="trow" style="color:var(--gold);font-weight:700">Hat trick</div>` : ''}`;
+}
+function goalieTip(o){
+  const sa = o.sv + o.ga;
+  return `<div class="tbig">${o.sv}<em> saves</em></div>
+    <div class="tnm">${esc(o.name)}</div>
+    <div class="trow tdim">${o.team} ${o.h ? 'vs' : '@'} ${o.opp} · ${resChip(o.res, o.us, o.them, o.end)}</div>
+    ${o.date ? `<div class="tdim">${WHEN(o.date)}</div>` : ''}
+    <div class="trow">${sa} shots · ${o.ga} against${sa ? ` · <b>${svs(o.sv / sa)}</b>` : ''}</div>
+    <div class="tdim">${fmtToi(o.toi)} in net${o.dec ? ` · decision <b>${o.dec === 'O' ? 'OT loss' : o.dec}</b>` : ' · no decision'}</div>
+    ${o.ga === 0 && o.dec === 'W' ? `<div class="trow" style="color:var(--gold);font-weight:700">Shutout</div>` : ''}`;
+}
+
+/* Shot volume: the leading scorers' located attempts, split by what became of them. */
+function volumeCard(){
+  const top = D.players.slice(0, 26).map(p => {
+    let g = 0, s = 0, m = 0;
+    unpackShots(p.shots).forEach(x => { if (x[2] === 1) g++; else if (x[2] === 0) s++; else m++; });
+    return {p, g, s, m, tot: g + s + m};
+  });
+  if (!top.length) return noPlayers('shot volume', 'How the top scorers shot');
+  const max = Math.max(...top.map(r => r.tot));
+  return `<div class="in">
+    <div class="kick">Chart · shot volume</div>
+    <h2 style="font-size:clamp(19px,2.2vw,29px);font-weight:700;letter-spacing:-.02em">
+      How the top scorers shot</h2>
+    <p style="font-size:12px;color:var(--dim);max-width:80ch">Every located shot attempt of the
+      leading 26 scorers' seasons: the ones that went in, the ones the goalie stopped, and the
+      ones that missed the net. Blocked shots are not located, so they are not here. Bar length
+      is attempts, so it shows appetite as well as finish.</p>
+    <div class="chart">${top.map((r, i) => {
+      const w = r.tot / max * 100;
+      const part = (v, c) => `<i style="position:relative;display:inline-block;height:100%;
+        width:${(v / r.tot * 100).toFixed(2)}%;background:${c};border-radius:0"></i>`;
+      return `<div class="crow"><span class="rk">${i+1}</span>
+        <span class="cbar" style="background:none">
+          <span style="position:absolute;inset:0 auto 0 0;width:${w.toFixed(1)}%;
+            display:flex;border-radius:5px;overflow:hidden">
+            ${part(r.g, 'var(--goal)')}${part(r.s, 'var(--save)')}${part(r.m, 'rgba(150,166,205,.32)')}</span>
+          <span style="left:9px">${plink(r.p.id, esc(r.p.name))}&nbsp;<em style="font-style:normal;opacity:.75">${
+            (100 * r.g / Math.max(1, r.g + r.s)).toFixed(1)}%</em></span></span>
+        <span style="text-align:right"><b>${r.tot}</b></span></div>`;
+    }).join('')}
+    </div>
+    <div class="mixlab" style="margin-top:2px">
+      <span><i class="dot" style="background:var(--goal)"></i>goals</span>
+      <span><i class="dot" style="background:var(--save)"></i>saved</span>
+      <span><i class="dot" style="background:rgba(150,166,205,.32)"></i>missed the net</span>
+      <span style="margin-left:auto">% is goals from shots on target</span></div>
+  </div>`;
+}
+
+/* ---------- build ---------- */
+const film = document.getElementById('film');
+film.innerHTML = CARDS.map(c => {
+  const body = c.kind === 'cover'  ? coverCard()
+             : c.kind === 'team'   ? teamCard(c.t)
+             : c.kind === 'player' ? playerCard(c.p)
+             : RACES[c.kind]       ? raceCard(c.kind)
+             : c.kind === 'ladder' ? ladderCard()
+             : volumeCard();
+  return `<section class="card">${body}</section>`;
+}).join('');
+
+document.getElementById('pills').innerHTML =
+  `<a class="pill" id="towlink" href="towers-${SEASON}.html">Season</a>` +
+  SECTIONS.map((s,i) =>
+    `<button class="pill" data-sec="${i}" onclick="go(${s.at})">${s.name}</button>`).join('');
+
+document.getElementById('cnote').textContent =
+  `${D.counts.teams} team cards · ${D.counts.players} skater and ${D.counts.goalies} goalie ` +
+  `cards, drawn from the ${D.counts.skaterPool} skaters and ${D.counts.goaliePool} goalies ` +
+  `who played in ${SEASON}.` +
+  (TAIL.length ? ` The other ${TAIL.length} have an unlisted card, opened from a roster
+    tile or by its number.`.replace(/\s+/g, ' ') : '');
+
+/* Every page is written season-suffixed, so all cross-links can be built from the
+   season name alone; index.html / towers.html are copies of the default season. */
+document.getElementById('seasons').innerHTML = (D.seasons || [SEASON]).map(s =>
+  s === SEASON ? `<span class="pill on">${s}</span>`
+               : `<a class="pill" href="index-${s}.html">${s}</a>`).join('');
+
+const APPS = [
+  ['Formula 1','A season read lap by lap','#00d7b6','https://f1.aguywithascarf.com'],
+  ['Tennis','The season, one player at a time','#f2c14e','https://tennis.aguywithascarf.com'],
+  ['Football','Season towers, top 5 leagues','#2f9e58','https://top5.aguywithascarf.com'],
+  ['NFL','Wins up, losses down','#4d94e0','https://nfl.aguywithascarf.com'],
+  ['NBA','Season Film + Towers','#e0453f','https://nba.aguywithascarf.com'],
+  ['World Cup','Road to the Final','#3fbe72','https://worldcupbracket.aguywithascarf.com'],
+  ['PGA TOUR','Season Film','#57a34a','https://golf.aguywithascarf.com'],
+  ['Athletics','World Record Film','#d98a3d','https://athletics.aguywithascarf.com']
+];
+document.getElementById('applist').innerHTML = APPS.map(a =>
+  `<a class="approw" href="${a[3]}" target="_blank" rel="noopener">
+    <i style="background:${a[2]}"></i><span>${a[0]}<em>${a[1]}</em></span><span>↗</span></a>`).join('');
+
+/* ---------- social metadata, per card ----------
+   The capture extension reads these at the moment the shortcut is pressed, so they have
+   to describe the card ON SCREEN, not the page. paint() is the one place every
+   navigation passes through, which is where this is called from -- same choke-point
+   pattern as f1-cards (lcHash) and the season towers (syncUrl). */
+const SITE = 'https://nhl.aguywithascarf.com';
+const SOC_OG = SITE + '/img/og.png';
+/* Instagram handles. A mention in the caption genuinely notifies the account, so a wrong
+   handle tags a stranger -- these are worth a glance before the first post. */
+const TEAM_IG = {
+  ANA:'anaheimducks', BOS:'nhlbruins', BUF:'buffalosabres', CGY:'nhlflames', CAR:'canes',
+  CHI:'nhlblackhawks', COL:'coloradoavalanche', CBJ:'bluejacketsnhl', DAL:'dallasstars',
+  DET:'detroitredwings', EDM:'edmontonoilers', FLA:'flapanthers', LAK:'lakings',
+  MIN:'mnwild', MTL:'canadiensmtl', NSH:'predsnhl', NJD:'njdevils', NYI:'ny_islanders',
+  NYR:'nyrangers', OTT:'ottawasenators', PHI:'philadelphiaflyers', PIT:'penguins',
+  SJS:'sanjosesharks', SEA:'seattlekraken', STL:'stlouisblues', TBL:'tblightning',
+  TOR:'mapleleafs', UTA:'utahmammoth', VAN:'canucks', VGK:'vegasgoldenknights',
+  WSH:'capitals', WPG:'nhljets',
+};
+/* Fold the accents FIRST. Stripping non-ascii straight away turned "Doncic" into
+   "lukadoni" -- it ate the c-with-caron and the i-with-acute rather than folding them. */
+const socTag = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '').replace(/^the/, '');
+
+function socMeta(name, content){
+  let m = document.head.querySelector('meta[name="' + name + '"]');
+  if (!m){ m = document.createElement('meta'); m.setAttribute('name', name); document.head.appendChild(m); }
+  m.setAttribute('content', content);
+}
+
+function socSubject(){
+  const c = CARDS[cur] || {};
+  if (c.kind === 'team'){
+    const t = c.t;
+    return {name: `${t.name}, ${SEASON}`,
+            line: `${t.name} went ${t.w}-${t.l}-${t.otl}, ${t.pts} points, in ${SEASON}`,
+            tags: ['nhl', 'dataviz', 'hockey', socTag(t.nick)],
+            ig: ['nhl', TEAM_IG[t.abbr]], bg: SOC_OG};
+  }
+  if (c.kind === 'player'){
+    const p = c.p, t = TEAMS[p.team] || {};
+    return {name: `${p.name}, ${SEASON}`,
+            line: p.kind === 'g'
+              ? `${p.name} won ${p.w} games in goal in ${SEASON}, saving ${svs(p.svp)}`
+              : `${p.name} scored ${p.pts} points in ${SEASON}, no. ${p.rank} in the league`,
+            tags: ['nhl', 'dataviz', 'hockey', socTag(p.name), socTag(t.nick)],
+            // His own cutout: transparent, so it crops and blurs well behind the story
+            // card. These are the files the cards already load, so they cannot 404.
+            ig: ['nhl', TEAM_IG[p.team]], bg: `${SITE}/${head(p.id)}`};
+  }
+  if (c.kind === 'cover'){
+    return {name: `NHL ${SEASON}`, line: `The ${SEASON} NHL season, card by card`,
+            tags: ['nhl', 'dataviz', 'hockey'], ig: ['nhl'], bg: SOC_OG};
+  }
+  return {name: `${label(cur)}, ${SEASON}`,
+          line: `${label(cur)} — the ${SEASON} NHL season`,
+          tags: ['nhl', 'dataviz', 'hockey', socTag(label(cur))],
+          ig: ['nhl'], bg: SOC_OG};
+}
+
+function updateSocialMeta(){
+  try {
+    const s = socSubject();
+    socMeta('agwas:title', s.name);
+    socMeta('agwas:cta', s.line + ' — full interactive experience below');
+    socMeta('agwas:tags', [...new Set(s.tags.filter(Boolean))].join(' '));
+    socMeta('agwas:mentions', s.ig.filter(Boolean).join(','));
+    socMeta('agwas:bg', s.bg);
+  } catch(e) {}
+}
+
+/* ---------- navigation ---------- */
+const cards = [...film.children];
+let cur = 0, playing = null;
+
+/* The unlisted card. Appended AFTER `cards` is taken, so the deck array stays exactly
+   the listed cards and every index in it still means what it meant. Hidden when unused,
+   which takes it out of the scroll container entirely -- so the reel really does end at
+   the last listed card, rather than having a blank 31st team card hanging off it. */
+const TOTAL = CARDS.length + TAIL.length;
+let UCUR = -1, UP = null;         // which unlisted card is showing, and his record
+const ucard = document.createElement('section');
+ucard.className = 'card';
+ucard.id = 'ucard';
+ucard.hidden = true;
+film.appendChild(ucard);
+function tailLink(k, html){
+  return `<a class="xl" href="#${CARDS.length + k + 1}"
+    onclick="closeMods();goTail(${k});return false">${html}</a>`;
+}
+
+/* ---------- hover detail ---------- */
+/* Two charts want the same panel: the biggest-nights card (one element per column) and
+   every player's game chart (a single stretched svg, so the column is worked out from
+   the pointer's x rather than from per-bar hit areas -- 82 rects 3px wide are a miserable
+   hover target, and the svg is preserveAspectRatio="none" so x maps linearly). */
+const TIP = document.getElementById('tip');
+function showTip(html, x, y){
+  TIP.innerHTML = html;
+  TIP.classList.add('on');
+  const r = TIP.getBoundingClientRect();
+  let l = x + 16, t = y - r.height - 16;
+  if (l + r.width > innerWidth - 10) l = x - r.width - 16;
+  if (l < 10) l = 10;
+  if (t < 10) t = y + 20;
+  TIP.style.transform = `translate(${Math.round(l)}px,${Math.round(t)}px)`;
+}
+function hideTip(){ TIP.classList.remove('on'); }
+
+function setMetric(m){
+  if (METRICS_G[m] && !METRICS_S[m]){ GMETRIC = m; try { localStorage.setItem('nhl.gmetric', m); } catch(e) {} }
+  else if (METRICS_S[m] && !METRICS_G[m]){ METRIC = m; try { localStorage.setItem('nhl.metric', m); } catch(e) {} }
+  else {                                   // a tab both kinds have: follow the card on screen
+    const p = UCUR >= 0 ? UP : (CARDS[cur] || {}).p;
+    if (p && p.kind === 'g') GMETRIC = m; else METRIC = m;
+  }
+  paintLog(cur);
+}
+function setLogMode(d){
+  LOGMODE = d;
+  try { localStorage.setItem('nhl.logmode', d); } catch(e) {}
+  paintLog(cur);
+}
+function togglePo(){
+  POON = !POON;
+  try { localStorage.setItem('nhl.poon', POON ? '1' : '0'); } catch(e) {}
+  paintLog(cur);
+}
+/* Re-rendering all 100 charts on every switch is wasteful, so a card is brought up to
+   date when you land on it. paint() calls this. */
+function paintLog(i){
+  const host = UCUR >= 0 ? ucard : cards[i];
+  const p = UCUR >= 0 ? UP : (CARDS[i] || {}).p;
+  if (!p || !host) return;
+  const el = host.querySelector('.logwrap');
+  const want = metricKey(p) + ':' + LOGMODE + ':' + (POON ? 'po' : 'rs');
+  if (!el || el.dataset.metric === want) return;
+  el.innerHTML = logPanel(p, metricKey(p));
+  el.dataset.metric = want;
+  clearHl();
+  hideTip();
+}
+
+let hlEl = null;
+function clearHl(){ if (hlEl){ hlEl.setAttribute('width', 0); hlEl = null; } }
+
+function onHover(e){
+  const box = e.target.closest('.loghook');
+  if (box) return logHover(e, box);
+  clearHl();
+  const col = e.target.closest('[data-night]');
+  if (col) return showTip(nightTip(D.nights[+col.dataset.night]), e.clientX, e.clientY);
+  hideTip();
+}
+
+function logHover(e, box){
+  const svg = box.querySelector('svg.log');
+  const p = playerAt(box);
+  if (!p || !p.log.length) return hideTip();
+  const r = svg.getBoundingClientRect();
+  const {PO, SLOTS} = slotsOf(p);
+  const c = Math.floor((e.clientX - r.left) / r.width * SLOTS.length);
+  if (c < 0 || c >= SLOTS.length) { clearHl(); return hideTip(); }
+  const bw = 1000 / SLOTS.length;
+  hlEl = svg.querySelector('.loghl');
+  hlEl.setAttribute('x', (c * bw).toFixed(2));
+  hlEl.setAttribute('width', Math.max(1.2, bw - 0.8).toFixed(2));
+
+  const slot = SLOTS[c];
+  if (slot.gap) { clearHl(); return hideTip(); }
+  const gk = p.kind === 'g';
+  if (slot.po !== undefined){
+    const x = PO[slot.po] || [];
+    const kick = `<div class="tdim" style="font-size:10px;letter-spacing:.14em;
+       text-transform:uppercase">${gk ? PO_ROUNDS[x[4]] : PO_ROUNDS[x[7]]} · playoff game ${slot.po + 1}</div>`;
+    return showTip(kick + (gk
+      ? goalieTip({name: p.name, team: p.team, sv: x[0], ga: x[1], toi: x[2], dec: x[3],
+                   res: x[5], opp: x[6], us: x[7], them: x[8], h: x[9] === 'H', date: x[10], end: x[11]})
+      : nightTip({name: p.name, team: p.team, pts: x[0], g: x[1], a1: x[2], a2: x[3], sog: x[4],
+                  hits: x[5], toi: x[6], res: x[8], opp: x[9], us: x[10], them: x[11],
+                  h: x[12] === 'H', date: x[13], end: x[14]})), e.clientX, e.clientY);
+  }
+  const ab = ((p.teams || [])[slot.ti] || {}).t || p.team;
+  const g = ((TEAMS[ab] || {}).games || [])[slot.gi];
+  if (!g) return hideTip();
+  const kick = `<div class="tdim" style="font-size:10px;letter-spacing:.14em;
+      text-transform:uppercase">Game ${c + 1} of ${SLOTS.length - (POON ? (p.polog || []).length : 0)
+        - (SLOTS.some(s => s.gap) ? 2 : 0)}</div>`;
+  if (slot.li < 0){
+    return showTip(kick +
+      `<div class="tnm" style="margin-top:4px">${gk ? 'Not in net' : 'Did not play'}</div>
+       <div class="trow tdim">${ab} ${g.ha === 'H' ? 'vs' : '@'} ${g.opp} · ${resChip(g.res, g.us, g.them, g.end)}</div>
+       <div class="tdim">${WHEN(g.date)}</div>`, e.clientX, e.clientY);
+  }
+  const x = G_(p, slot.li);
+  const base = {name: p.name, team: ab, opp: g.opp, h: g.ha === 'H', res: g.res,
+                us: g.us, them: g.them, date: g.date, end: g.end};
+  showTip(kick + (gk
+    ? goalieTip({...base, toi: x[2], sv: (x[3] || 0) - (x[4] || 0), ga: x[4] || 0, dec: x[5]})
+    : nightTip({...base, pts: p.log[slot.li], toi: x[2], g: x[3], a1: x[4], a2: x[5],
+                sog: x[6], hits: x[7]})), e.clientX, e.clientY);
+}
+
+film.addEventListener('mousemove', onHover);
+film.addEventListener('mouseleave', () => { clearHl(); hideTip(); });
+/* Touch has no hover: a tap on a column shows its panel, the next tap elsewhere hides it. */
+film.addEventListener('click', e => {
+  // The column is a link now, so a click already goes to the card; this is only the
+  // touch case, where there is no hover and a tap has to be able to show the panel.
+  const col = e.target.closest('[data-night]');
+  if (col || e.target.closest('.loghook')) onHover(e);
+  else { clearHl(); hideTip(); }
+});
+
+
+function label(i){
+  if (UCUR >= 0) return UP ? `${UP.name} · no. ${UP.rank}`
+                           : (NAMES[TAIL[UCUR][0]] || ['\u2014'])[0];
+  const c = CARDS[i];
+  if (c.kind === 'cover') return 'Cover';
+  if (c.kind === 'team') return c.t.name;
+  if (c.kind === 'player') return `${c.p.name} · no. ${c.p.rank}`;
+  return {race:'The scoring race', goalrace:'The goal race', astrace:'The assist race',
+          gkrace:'The goalies', ladder:'The standings', volume:'Shot volume',
+          nights:'The biggest nights'}[c.kind];
+}
+function section(i){
+  let s = 0;
+  SECTIONS.forEach((x, n) => { if (i >= x.at) s = n; });
+  return i === 0 ? -1 : s;
+}
+function paint(){
+  const c = CARDS[cur];
+  document.getElementById('ctx').innerHTML =
+    `NHL ${esc(SEASON)} · <b>${esc(label(cur))}</b>`;
+  document.getElementById('counter').innerHTML = UCUR >= 0
+    ? `<b>${cur+1}</b> / ${TOTAL} <span style="color:var(--dim)">unlisted</span>`
+    : `<b>${cur+1}</b> / ${CARDS.length}`;
+  // No section owns the tail, so no pill lights up there.
+  const s = UCUR >= 0 ? -1 : section(cur);
+  // Scoped to #pills on purpose: the top bar also holds the Film/Towers toggle and the
+  // season pills, and an unscoped '.pill' lit those up by index instead -- the Film page
+  // ended up highlighting "Towers".
+  document.querySelectorAll('#pills .pill[data-sec]').forEach(p =>
+    p.classList.toggle('on', +p.dataset.sec === s));
+  const want = '#' + (cur + 1);
+  if (location.hash !== want) history.replaceState(null, '', want);
+  try { localStorage.setItem('nhl.card', cur); } catch(e) {}
+  paintLog(cur);
+  paintRoster(cur);
+  updateSocialMeta();
+}
+function go(i, smooth = true){
+  // Leaving the tail hides its card, which is why nothing in the deck has to know it
+  // exists: with it hidden the film is the deck again, offsets and all.
+  if (UCUR >= 0){ UCUR = -1; UP = null; ucard.hidden = true; }
+  cur = Math.max(0, Math.min(CARDS.length - 1, i));
+  // 'auto' defers to CSS scroll-behavior, which is smooth here -- so an intended
+  // instant jump would animate across every card in between. 'instant' is the real one.
+  film.scrollTo({left: cards[cur].offsetLeft, behavior: smooth ? 'smooth' : 'instant'});
+  paint();
+}
+function step(d){
+  // Inside the tail the arrows walk the tail, in scoring order. Back off the front of
+  // it returns to the deck; there is no way in from that side, which is the point.
+  if (UCUR >= 0){
+    if (UCUR + d < 0) return go(CARDS.length - 1);
+    if (UCUR + d < TAIL.length) return goTail(UCUR + d);
+    return;
+  }
+  go(cur + d);
+}
+
+/* Whichever kind of card this player has. Everything that jumps to a player goes
+   through here rather than through CARD_OF_PLAYER, so a roster tile, a cross-link and
+   a chart column all behave the same. */
+function goPlayer(id){
+  const i = CARD_OF_PLAYER[id];
+  if (i != null) return go(i);
+  const k = TAIL_OF[id];
+  if (k != null) return goTail(k);
+}
+
+async function goTail(k){
+  if (!TAIL.length) return;
+  k = Math.max(0, Math.min(TAIL.length - 1, k));
+  const [id, ab] = TAIL[k];
+  UCUR = k; UP = null; cur = CARDS.length + k;
+  ucard.hidden = false;
+  ucard.innerHTML = `<div class="in"><p style="color:var(--dim);font-size:13px">
+    Loading ${esc((NAMES[id] || ['this player'])[0])}\u2026</p></div>`;
+  // Always instant: reaching an unlisted card is a jump from anywhere in the film, and
+  // stepping within the tail re-uses this same element, so there is nothing to animate.
+  film.scrollTo({left: ucard.offsetLeft, behavior: 'instant'});
+  paint();
+  try {
+    const p = (await rosterOf(ab))[id];
+    if (!p) throw 'missing';
+    if (UCUR !== k) return;            // moved on while the fetch was in the air
+    UP = p;
+    ucard.innerHTML = playerCard(p);
+    paint();
+  } catch(e) {
+    if (UCUR !== k) return;
+    // Opened from a file:// URL the fetch is blocked outright, so say what happened
+    // rather than leaving a spinner that never resolves.
+    ucard.innerHTML = `<div class="in"><h2 style="font-size:20px;font-weight:700">
+      ${esc((NAMES[id] || ['this player'])[0])}</h2>
+      <p style="font-size:12px;color:var(--dim);max-width:60ch">His card could not be
+      loaded. The cards outside the deck are fetched on demand, which needs the page
+      to be served over http \u2014 opened straight from disk, the browser blocks it.</p>
+      </div>`;
+  }
+}
+
+let sT;
+film.addEventListener('scroll', () => {
+  clearTimeout(sT);
+  sT = setTimeout(() => {
+    // This handler is here to catch the user scrolling. A programmatic jump also fires
+    // scroll events, and a smooth one over a long distance can go quiet for longer than
+    // the debounce mid-flight -- which read the half-way position as a destination and
+    // bounced a jump into the tail straight back out of it. If we are where we last
+    // asked to be, there is nothing to catch up with.
+    const want = UCUR >= 0 ? ucard.offsetLeft : cards[cur].offsetLeft;
+    if (Math.abs(film.scrollLeft - want) < 4) return;
+    const i = Math.round(film.scrollLeft / film.clientWidth);
+    // Swiping off the unlisted card and back onto the deck leaves the tail, which is
+    // the one case where the scroll position, not a call, decides where you are.
+    if (UCUR >= 0) { if (i < CARDS.length) go(i, false); return; }
+    if (i !== cur) { cur = i; paint(); }
+  }, 90);
+});
+
+function togglePlay(){
+  const b = document.getElementById('playb');
+  if (playing){ clearInterval(playing); playing = null;
+    b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg>';
+    b.title = 'Play'; return; }
+  playing = setInterval(() => {
+    if (cur >= CARDS.length - 1) return togglePlay();
+    step(1);
+  }, 3200);
+  b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg>';
+  b.title = 'Pause';
+}
+function fs(){
+  document.fullscreenElement ? document.exitFullscreen()
+    : document.documentElement.requestFullscreen().catch(()=>{});
+}
+/* One file per team, fetched the first time a roster row on that team is opened and kept
+   for the session. Per team rather than one bundle: a ~20 KB fetch scoped to the card
+   already on screen beats a 700 KB fetch on the first click anywhere. */
+const ROSTER = {};
+async function rosterOf(ab){
+  if (!ROSTER[ab]) ROSTER[ab] = fetch(`data/roster/${SEASON}-${ab}.json`)
+    .then(r => r.ok ? r.json() : Promise.reject(r.status));
+  return ROSTER[ab];
+}
+function openMod(id){ closeMods(); document.getElementById(id).classList.add('on'); }
+function closeMods(){
+  document.querySelectorAll('.mod').forEach(m => m.classList.remove('on'));
+  hideTip(); clearHl();
+}
+
+/* "Which player is this chart about" -- the unlisted card is not in CARDS, so it
+   answers for itself. */
+function playerAt(el){
+  const card = el.closest('.card');
+  if (!card) return null;
+  if (card === ucard) return UP;
+  return (CARDS[cards.indexOf(card)] || {}).p;
+}
+
+/* ---------- jump ---------- */
+const INDEX = CARDS.map((c,i) => {
+  let s = '', sub = '';
+  let short = null;
+  if (c.kind === 'team') { s = [c.t.name, c.t.city, c.t.nick, c.t.abbr, c.t.conf, c.t.div].join(' ');
+    short = c.t.name; sub = `${c.t.w}-${c.t.l}`; }
+  else if (c.kind === 'player') { s = [c.p.name, c.p.team, c.p.nat, c.p.pos,
+      c.p.kind === 'g' ? 'goalie goaltender' : 'skater'].join(' ');
+    short = c.p.name; sub = c.p.kind === 'g' ? `${c.p.team} · ${c.p.w} W` : `${c.p.team} · ${c.p.pts} pts`; }
+  else if (c.kind === 'cover') { s = 'cover start title'; sub = 'the opening card'; }
+  else { s = {race:'scoring race points leaders chart art ross',
+              goalrace:'goal race goals leaders chart rocket richard snipers',
+              astrace:'assist race assists leaders passing chart playmakers',
+              gkrace:'goalies wins save percentage shutouts vezina chart',
+              ladder:'standings table conference chart',
+              volume:'shot volume attempts shots chart',
+              nights:'biggest nights best individual games hat tricks points chart'}[c.kind];
+         sub = 'chart'; }
+  const group = c.kind === 'team' ? 'Teams'
+              : c.kind === 'player' ? (c.p.kind === 'g' ? 'Goalies' : 'Players')
+              : c.kind === 'cover' ? 'Start'
+              : TCHARTS.includes(c.kind) ? 'Team stats' : 'Player stats';
+  return {i, group, label: short || label(i), sub, key: s.toLowerCase()};
+});
+/* The unlisted cards are in the jump box too -- typing a name IS a deep link, and it is
+   the only way to reach one without already being on his team's card. They are kept out
+   of the panel's blank state, though: 391 rows would bury the 135 that are the film. */
+const TINDEX = TAIL.map((r, k) => {
+  const nm = NAMES[r[0]] || ['\u2014', ''];
+  return {i: CARDS.length + k, k, group: 'Roster', label: nm[0],
+          sub: `${r[1]}${nm[1] ? ' · ' + nm[1] : ''}`,
+          key: [nm[0], r[1], 'roster unlisted'].join(' ').toLowerCase()};
+});
+const JGROUPS = ['Start', 'Players', 'Goalies', 'Player stats', 'Teams', 'Team stats', 'Roster'];
+let jsel = 0;
+function drawJump(q){
+  q = q.trim().toLowerCase();
+  const n = parseInt(q, 10);
+  const all = INDEX.concat(TINDEX);
+  const rows = !q ? INDEX
+    : (String(n) === q && n >= 1 && n <= TOTAL) ? [all[n-1]]
+    : all.filter(r => q.split(/\s+/).every(w => r.key.includes(w)));
+  jsel = 0;
+  // Grouped and multi-column: 134 cards in one flat list is a scroll, and the groups
+  // are how you actually think about the deck. Rows stay in INDEX order inside each
+  // group so the arrow keys, which walk the DOM, still move sensibly.
+  let k = 0, html = '';
+  for (const g of JGROUPS){
+    const inGroup = rows.filter(r => r.group === g);
+    if (!inGroup.length) continue;
+    html += `<div class="jsec"><div class="jsechd">${g}
+      <span>${inGroup.length}</span></div><div class="jgrid">`
+      + inGroup.map(r => `<div class="jrow ${k++ === 0 ? 'sel' : ''}" data-i="${r.i}"
+          onclick="${r.k != null ? `goTail(${r.k})` : `go(${r.i})`};closeMods()">
+          <span class="jn">${r.i+1}</span>
+          <span class="jl">${esc(r.label)}<span class="jt">${esc(r.sub)}</span></span>
+        </div>`).join('')
+      + '</div></div>';
+  }
+  document.getElementById('jlist').innerHTML = html || '<p>Nothing matches.</p>';
+}
+function openJump(){
+  openMod('jmodal'); drawJump('');
+  const q = document.getElementById('jq'); q.value = ''; setTimeout(() => q.focus(), 30);
+}
+document.getElementById('jq').addEventListener('input', e => drawJump(e.target.value));
+document.getElementById('jq').addEventListener('keydown', e => {
+  const rows = [...document.querySelectorAll('.jrow')];
+  if (!rows.length) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    e.preventDefault();
+    rows[jsel].classList.remove('sel');
+    jsel = (jsel + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length;
+    rows[jsel].classList.add('sel');
+    rows[jsel].scrollIntoView({block:'nearest'});
+  } else if (e.key === 'Enter'){
+    e.preventDefault();
+    rows[jsel].click();            // the row already knows which kind of card it is
+  }
+});
+
+/* ---------- keys, swipe ---------- */
+addEventListener('keydown', e => {
+  const open = document.querySelector('.mod.on');
+  if (e.key === 'Escape') return closeMods();
+  if (open) return;                       // let the jump box own its keys
+  if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+  else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(CARDS.length - 1);
+  else if (e.key === 'f') fs();
+  else if (e.key === 'h' || e.key === '?') openMod('hmodal');
+  else if (e.key === 'g' || e.key === '/') { e.preventDefault(); openJump(); }
+});
+let tx = 0, ty = 0;
+film.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; },
+  {passive:true});
+film.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+  if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6) step(dx < 0 ? 1 : -1);
+}, {passive:true});
+
+/* ---------- open where we left off ---------- */
+/* Standing rule across these apps: a reload lands where you were, never card 1. */
+(function start(){
+  let i = 0, k = -1;
+  const raw = decodeURIComponent(location.hash.replace('#', ''));
+  const h = parseInt(raw, 10);
+  // A section can be linked by name -- index-2025-26.html#players -- so the towers page
+  // can jump straight into one without knowing where its cards start.
+  const named = SECTIONS.find(x => secSlug(x.name) === raw.toLowerCase());
+  if (named) i = named.at;
+  else if (h >= 1 && h <= CARDS.length) i = h - 1;
+  // Past the deck is the tail: #236 is an unlisted card, and it is the only way in.
+  else if (h > CARDS.length && h <= TOTAL) k = h - CARDS.length - 1;
+  else { try { const s = +localStorage.getItem('nhl.card');
+               if (s >= 0 && s < CARDS.length) i = s;
+               else if (s >= CARDS.length && s < TOTAL) k = s - CARDS.length; }
+         catch(e){} }
+  k >= 0 ? goTail(k) : go(i, false);
+  addEventListener('resize', () => UCUR >= 0
+    ? film.scrollTo({left: ucard.offsetLeft, behavior: 'instant'})
+    : go(cur, false));
+})();
+</script>
+</body>
+</html>
