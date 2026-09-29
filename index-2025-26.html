@@ -693,8 +693,9 @@ a{color:inherit}
 .bccells i.w{background:var(--win)}
 .bccells i.o{background:var(--otl)}
 .bccells i.l{background:var(--loss);opacity:.78}
-/* an overtime or shootout WIN: the same green, with a dark notch so it can be told apart */
-.bccells i.w.x{box-shadow:inset 0 -3px 0 rgba(7,9,16,.55)}
+/* an overtime or shootout WIN: the same green -- it is worth the same two points -- with a
+   dark dot in the middle. A notch along the foot was tried first and was too quiet to find. */
+.bccells i.w.x{background:radial-gradient(circle at 50% 50%,rgba(7,9,16,.78) 0 30%,transparent 33%),var(--win)}
 .bccells i:hover{outline:1.5px solid var(--ink);outline-offset:0;position:relative;z-index:1}
 .bcaxis{position:relative;height:11px}
 .bcaxis span{position:absolute;transform:translateX(-50%);font-size:9px;color:var(--dim);
@@ -1974,8 +1975,8 @@ function barcodeCard(){
     <p style="font-size:12px;color:var(--dim);max-width:100ch">One cell per game in the order
       it was played: <b style="color:var(--win)">win</b>, <b style="color:var(--otl)">overtime or
       shootout loss</b> (a point), <b style="color:var(--loss)">regulation loss</b>${played ? '' :
-      ', grey still to play'}. A notch at the foot of a win marks one settled in overtime or a
-      shootout. Rows in standings order${played ? '; dimmed teams missed the playoffs' : ''}.
+      ', grey still to play'}. A <b style="color:var(--win)">green cell with a dark dot</b> is a win settled in
+      overtime or a shootout. Rows in standings order${played ? '; dimmed teams missed the playoffs' : ''}.
       Hover a cell for the game.</p>
     <div class="bc">${block('Eastern')}${block('Western')}</div>
   </div>`;
