@@ -1021,7 +1021,7 @@ function gnoLabel(){
 }
 
 /* ---------- which view ---------- */
-let VIEW = PREF.get('view', 'towers');
+let VIEW = PREF.get('view', 'race');      // the race is the season view; towers stay one click away
 function drawViews(){
   seg('views', [['towers', 'Towers'], ['race', 'Race'], ['bracket', 'Bracket']], VIEW, v => {
     VIEW = v; PREF.set('view', v); drawViews(); applyView();
