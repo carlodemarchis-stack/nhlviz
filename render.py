@@ -25,7 +25,7 @@ UMAMI_ID = "607e782e-2f8a-40f3-8b06-4212c13cd298"   # the "NHL" site, created 20
 # Fields the towers page needs; the film payload is far bigger than the towers require,
 # so each page gets only what it draws.
 TOWER_TEAM_KEYS = ("abbr", "name", "city", "nick", "conf", "div", "seed", "primary",
-                   "secondary", "w", "l", "otl", "pts", "rw", "diff", "games", "po")
+                   "secondary", "w", "l", "otl", "pts", "rw", "diff", "games", "po", "clinch")
 
 
 def build(tpl_path, out_path, payload, season, extra=None):
