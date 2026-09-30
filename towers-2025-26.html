@@ -300,19 +300,28 @@ body.race #wrap{top:var(--bar);display:flex;flex-direction:column}
 .rchd b{color:var(--ink);letter-spacing:.02em}
 .rcrows{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 .rcrow{flex:1 1 0;min-height:22px;display:grid;align-items:center;gap:9px;
-  grid-template-columns:18px 22px 96px minmax(0,1fr) 34px 34px;font-size:12px;
+  grid-template-columns:18px 22px 96px minmax(0,1fr) 66px 34px;font-size:12px;
   font-variant-numeric:tabular-nums;transition:opacity .2s}
 .rcrow img{width:20px;height:20px;object-fit:contain}
 .rcrow .rk{color:var(--dim);text-align:right;font-size:10.5px}
 .rcrow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rcrow .pt{text-align:right;font-weight:700}
+.rcrow .rec{text-align:right;color:#c2cadb;letter-spacing:.01em}
 .rcrow .tag{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-align:center;
   border-radius:4px;padding:2px 0;color:var(--acc);border:1px solid rgba(42,159,216,.45)}
 .rcrow .tag.wc{color:#9fd6f2;border-style:dashed}
 .rcrow .tag.none{border:none;color:transparent}
 .rcrow.out{opacity:.38}
 .rcrow.clinched .tag{background:rgba(42,159,216,.18)}
-.rcbar{position:relative;height:62%;max-height:16px;min-height:7px}
+.rcbar{position:relative;height:70%;max-height:19px;min-height:13px}
+/* Points and the ceiling, written INTO the bar: the points just past the solid part, the
+   most it can still reach at the far end of the stripes. A dark chip each, so the text
+   survives any team colour and the stripes behind it. */
+.rcbar b{position:absolute;top:50%;transform:translateY(-50%);z-index:3;white-space:nowrap;
+  font-size:10px;line-height:1;font-weight:700;padding:2px 5px;border-radius:4px;
+  background:rgba(7,9,16,.78);font-variant-numeric:tabular-nums}
+.rcbar .rcpts{color:var(--ink)}
+.rcbar .rcpts small{font-size:8.5px;font-weight:600;opacity:.7;margin-left:2px}
+.rcbar .rcmax{color:rgba(232,236,245,.62);font-weight:600}
 .rcbar > i{position:absolute;top:0;bottom:0;display:block}
 .rcbar .gh{border-radius:0 3px 3px 0;background:repeating-linear-gradient(135deg,
   color-mix(in srgb,var(--c) 26%,transparent) 0 3px,transparent 3px 6px);
@@ -325,7 +334,7 @@ body.race #wrap{top:var(--bar);display:flex;flex-direction:column}
 .rcline{font-size:9.5px;color:var(--ink);letter-spacing:.04em;text-transform:none}
 @media (max-width:900px){
   .rcgrid{grid-template-columns:1fr;gap:18px}
-  .rcrow{grid-template-columns:16px 18px 70px minmax(0,1fr) 28px 30px;font-size:11px;min-height:24px}
+  .rcrow{grid-template-columns:16px 18px 70px minmax(0,1fr) 54px 30px;font-size:11px;min-height:24px}
   .rckey{margin-left:0}
   body.race #wrap{display:block}
 }
@@ -968,6 +977,16 @@ function raceHtml(){
   const pc = v => (Math.max(0, v) / SC * 100).toFixed(2);
   const ticks = [0, 25, 50, 75, 100, 125, 150].filter(v => v <= SC)
     .map(v => `<span style="left:${pc(v)}%">${v}</span>`).join('');
+  /* The points chip sits just past the solid bar. The ceiling chip sits inside the end of
+     the stripes -- when there is room for both: late in a season the stripes shrink to a
+     sliver, and then the ceiling is left to the tooltip rather than piled on the points. */
+  const labels = r => {
+    const room = 2 * r.left / SC * 100;             // stripe length, as % of the bar
+    const pts = `<b class="rcpts" style="left:calc(${pc(r.pts)}% + 5px)">${r.pts}<small>pts</small></b>`;
+    const max = room >= 13 ? `<b class="rcmax" style="right:calc(${(100 - +pc(r.max)).toFixed(2)}% + 4px)"
+      title="the most it can still reach">max ${r.max}</b>` : '';
+    return pts + max;
+  };
   RACEROWS = {};
   const panel = conf => {
     const {rows, cut} = raceConf(conf, G);
@@ -977,7 +996,8 @@ function raceHtml(){
         <span class="rcline">${cut == null ? 'spots and the line appear once every team has played'
           : `playoff line <b>${cut}</b> pts`}</span></div>
       <div class="rcrow" style="flex:0 0 auto;min-height:0"><span></span><span></span><span></span>
-        <span class="rcaxis">${ticks}</span><span></span><span></span></div>
+        <span class="rcaxis">${ticks}</span><span class="rec" style="font-size:9px;letter-spacing:.08em;
+          color:var(--dim)">W-L-OTL</span><span></span></div>
       <div class="rcrows">${rows.map((r, i) => {
         const c = winColor(r.t);
         const tag = r.tag ? `<span class="tag${r.tag.startsWith('WC') ? ' wc' : ''}">${r.tag}</span>`
@@ -992,8 +1012,9 @@ function raceHtml(){
             <i class="w" style="left:0;width:${pc(2 * r.w)}%"></i>
             <i class="o" style="left:${pc(2 * r.w)}%;width:${pc(r.o)}%"></i>
             ${cut == null ? '' : `<i class="cut" style="left:${pc(cut)}%"></i>`}
+            ${labels(r)}
           </span>
-          <span class="pt">${r.pts}</span>${tag}
+          <span class="rec">${r.w}-${r.l}-${r.o}</span>${tag}
         </div>`;
       }).join('')}</div>
     </div>`;
