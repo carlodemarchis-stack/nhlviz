@@ -5,7 +5,7 @@
     python3 render.py 2026-27
 
 template.html  -> index.html   (the card film)
-towers.html.in -> towers.html  (the season towers, if present)
+towers.html.in -> towers.html  (the playoff race + bracket; file name kept for old links)
 
 The pages ship self-contained: the payload is inlined rather than fetched, so the film
 paints without a second round trip and works from a file:// URL.
@@ -68,14 +68,13 @@ def social(stem, season, payload, landing=False):
     else:
         story = (f"{top['name']} led the league with {top['pts']} points"
                  + (f", and the {champ['name']} won the Stanley Cup" if champ else "") + ".")
-    if stem == "towers":
-        desc = (f"Every NHL team's {season} season as a shape: wins stack up, losses hang "
-                f"down, overtime losses earn their half, games still to play hang from the "
-                f"ceiling. " + (f"Drag the slider and watch the table re-sort game by game. {story}"
-                                if played else story))
-        return {"__PAGEURL__": url, "__OGTITLE__": f"NHL Season Towers — {season}",
+    if stem == "towers":        # the file keeps its name; the page is the playoff race
+        desc = (f"The {season} NHL playoff race: every team's points, every point it could "
+                f"still win, and the playoff line if the season ended today. "
+                + (f"Drag the slider to replay it game by game. {story}" if played else story))
+        return {"__PAGEURL__": url, "__OGTITLE__": f"NHL Playoff Race — {season}",
                 "__OGDESC__": desc,
-                "__OGALT__": f"Thirty-two NHL teams drawn as towers on a shared baseline, {season}"}
+                "__OGALT__": f"The 32 NHL teams as bars racing for the playoff line, {season}"}
     n = len(payload.get("players") or []) + len(payload.get("goalies") or [])
     if not played:
         desc = (f"The {season} NHL season as a film, before the puck drops: a card per team "

@@ -1,4 +1,4 @@
-# NHL Season Film + Season Towers
+# NHL Season Film + Playoff Race
 
 The NHL entry in the AGWAS sport-viz family, at **nhl.aguywithascarf.com**. One app, two
 ways to read a season:
@@ -7,9 +7,11 @@ ways to read a season:
   most wins, six charts that rank players, all 32 teams in order of points, then the
   standings. Horizontal, deep-linkable, keyboard-driven. Everyone else who played has an
   unlisted card, fetched per team on demand from `data/roster/`.
-- **`towers.html` — the Towers** (and the **Bracket**). Wins stack up, regulation losses
-  hang down, and an **OT/SO loss is a half-height faded box above the line** — it earns
-  one point where a win earns two, so the height above the line *is* the team's points.
+- **`towers.html` — the Playoff Race** (and the **Bracket**). One bar per team: points won,
+  striped on to every point still possible, against the playoff line in the NHL's own
+  format (3 per division + 2 wild cards). The file keeps its old name so links still work;
+  the original towers were removed on 2026-09-30 — at 82 games a box was ~3px and no game
+  could be read. The film's Team stats **season barcode** is the game-by-game view.
 
 Built for **2025-26** (complete) and **2026-27** (live, 84 games a team — the first
 84-game season), behind a season switcher.

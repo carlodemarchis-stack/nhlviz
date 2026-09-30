@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NHL Season Towers — 2026-27</title>
-<meta name="description" content="Every NHL team's 2026-27 season as a shape: wins stack up, losses hang down, overtime losses earn their half, games still to play hang from the ceiling. Drag the slider and watch the table re-sort game by game. Boston Bruins led the league with 2 points.">
+<title>NHL Playoff Race — 2026-27</title>
+<meta name="description" content="The 2026-27 NHL playoff race: every team's points, every point it could still win, and the playoff line if the season ended today. Drag the slider to replay it game by game. Boston Bruins led the league with 2 points.">
 <link rel="canonical" href="https://nhl.aguywithascarf.com/towers-2026-27.html">
 <meta name="theme-color" content="#070910">
 
@@ -14,23 +14,23 @@
      2025-26 film. Bump the ?v= on og.png to bust the caches. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="A Guy With A Scarf">
-<meta property="og:title" content="NHL Season Towers — 2026-27">
-<meta property="og:description" content="Every NHL team's 2026-27 season as a shape: wins stack up, losses hang down, overtime losses earn their half, games still to play hang from the ceiling. Drag the slider and watch the table re-sort game by game. Boston Bruins led the league with 2 points.">
+<meta property="og:title" content="NHL Playoff Race — 2026-27">
+<meta property="og:description" content="The 2026-27 NHL playoff race: every team's points, every point it could still win, and the playoff line if the season ended today. Drag the slider to replay it game by game. Boston Bruins led the league with 2 points.">
 <meta property="og:url" content="https://nhl.aguywithascarf.com/towers-2026-27.html">
 <meta property="og:image" content="https://nhl.aguywithascarf.com/img/og.png?v=1">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Thirty-two NHL teams drawn as towers on a shared baseline, 2026-27">
+<meta property="og:image:alt" content="The 32 NHL teams as bars racing for the playoff line, 2026-27">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="NHL Season Towers — 2026-27">
-<meta name="twitter:description" content="Every NHL team's 2026-27 season as a shape: wins stack up, losses hang down, overtime losses earn their half, games still to play hang from the ceiling. Drag the slider and watch the table re-sort game by game. Boston Bruins led the league with 2 points.">
+<meta name="twitter:title" content="NHL Playoff Race — 2026-27">
+<meta name="twitter:description" content="The 2026-27 NHL playoff race: every team's points, every point it could still win, and the playoff line if the season ended today. Drag the slider to replay it game by game. Boston Bruins led the league with 2 points.">
 <meta name="twitter:image" content="https://nhl.aguywithascarf.com/img/og.png?v=1">
 
 <!-- Read by the AGWAS capture extension at the moment you press the shortcut, and
      embedded into the PNG as the CTA / Tags / Mentions chunks for the Instagram caption
      and story card. These are DEFAULTS: updateSocialMeta() rewrites them on every card
      change, so a capture describes the card you are actually looking at. -->
-<meta name="agwas:title"    content="NHL Season Towers — 2026-27">
+<meta name="agwas:title"    content="NHL Playoff Race — 2026-27">
 <meta name="agwas:cta"      content="Full interactive NHL experience below">
 <meta name="agwas:mentions" content="nhl">
 <meta name="agwas:tags"     content="nhl dataviz hockey">
@@ -42,7 +42,7 @@
   --pan:rgba(255,255,255,.055); --pan2:rgba(255,255,255,.014);
   --line:rgba(150,166,205,.14);
   --acc:#2a9fd8; --otl:#e8a04a; --gold:#f0c24a; --win:#43c07a; --loss:#e0554a;
-  --bar:46px; --sub:40px; --ctl:58px;
+  --bar:46px; --ctl:58px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
@@ -65,53 +65,9 @@ b{font-weight:700}
 .lab{color:var(--dim);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
   margin-right:2px;flex:0 0 auto}
 
-/* The towers' own controls live under the bar rather than in it: the top bar is
-   navigation shared with the film, and Group / Order are settings of this one view.
-   The legend moved in with them -- it used to float over the top-right of the first
-   group, on top of whatever tower was there. */
-#subbar{position:fixed;top:var(--bar);left:0;right:0;height:var(--sub);z-index:35;
-  display:flex;align-items:center;gap:12px;padding:0 16px;font-size:12px;
-  background:rgba(7,9,16,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-#subbar .pill{padding:4px 11px;font-size:11px}
-#wrap{position:fixed;top:calc(var(--bar) + var(--sub));bottom:var(--ctl);left:0;right:0;
+#wrap{position:fixed;top:var(--bar);bottom:var(--ctl);left:0;right:0;
   overflow:auto;
   padding:14px 16px 8px}
-.group{margin-bottom:18px}
-.ghead{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
-  margin-bottom:8px;border-bottom:1px solid var(--line);padding-bottom:5px}
-.rowt{display:flex;gap:6px;align-items:flex-end}
-
-.tw{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px}
-.stack{width:100%;position:relative;height:var(--th)}
-.up,.dn{position:absolute;left:0;right:0;display:flex;flex-direction:column-reverse}
-.up{bottom:50%;padding-bottom:1px}
-.dn{top:50%;flex-direction:column;padding-top:1px}
-.cellbox{width:100%;border-radius:1.5px;border-bottom:.5px solid rgba(7,9,16,.55)}
-/* An overtime loss: half a win's height, because it is worth half a win's points, in a
-   faded wash of the team's colour -- a point taken from a game that was lost. (Hollow
-   outlines were tried first: at half of a 3px cell they collapse into a single line.) */
-.cellbox.ot{opacity:.42}
-.mid{position:absolute;left:-2px;right:-2px;top:50%;height:1px;z-index:3;
-  background:rgba(150,166,205,.5);transform:translateY(-.5px)}
-.fut{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;opacity:.4}
-.tlab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;width:100%;
-  /* FIXED height, and fixed line boxes inside it. The whole point of these towers is a
-     baseline shared by all 30 teams, and a label that grows by even 3px -- the champion's
-     star glyph did exactly this -- lifts that one team's baseline off the line. */
-  height:54px;overflow:hidden;flex:0 0 54px}
-.tlab img{width:clamp(15px,1.5vw,22px);flex:0 0 auto;
-  /* BOTH dimensions fixed, with object-fit doing the letterboxing. The crest SVGs are
-     not all square -- Houston's is portrait -- so height:auto made that one label taller
-     than its fixed 50px box and pushed the team name into the record line. */
-  height:clamp(15px,1.5vw,22px);object-fit:contain;
-  /* Brooklyn's and San Antonio's crests are black artwork; without a faint disc behind
-     them they vanish into the background entirely. */
-  background:rgba(255,255,255,.09);border-radius:50%;padding:1.5px}
-.tlab .ab{font-size:9.5px;color:var(--dim);letter-spacing:.04em;
-  line-height:12px;height:12px;overflow:hidden;white-space:nowrap}
-.tlab .rc{font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap;
-  line-height:13px;height:13px}
-.tw.champ .ab{color:var(--gold);font-weight:700}
 
 #ctlbar{position:fixed;bottom:0;left:0;right:0;height:var(--ctl);z-index:40;display:flex;
   align-items:center;gap:12px;padding:0 16px;background:rgba(7,9,16,.9);
@@ -280,13 +236,12 @@ body.bracket #wrap{display:flex;flex-direction:column}
 
 .brnone{color:var(--dim);font-size:13px;padding:30px 4px}
 .brcap{font-size:10px;color:var(--dim);margin-top:10px;text-align:center}
-body.bracket #subbar,body.bracket #ctlbar{display:none}
+body.bracket #ctlbar{display:none}
 /* ---------- the playoff race ----------
    One bar per team: the points it has, and -- faint, behind -- every point it could still
    reach. The line through each conference is the playoff cut if the season ended today;
    a team whose ghost can no longer reach enough is out, and dims. */
-body.race #subbar{display:none}
-body.race #wrap{top:var(--bar);display:flex;flex-direction:column}
+body.race #wrap{display:flex;flex-direction:column}
 .rchead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:12px}
 .rchead h2{font-size:clamp(17px,1.8vw,24px);font-weight:700;letter-spacing:-.015em}
 .rchead p{font-size:11.5px;color:var(--dim);max-width:110ch;line-height:1.5}
@@ -322,6 +277,7 @@ body.race #wrap{top:var(--bar);display:flex;flex-direction:column}
 .rcbar .rcpts{color:var(--ink)}
 .rcbar .rcpts small{font-size:8.5px;font-weight:600;opacity:.7;margin-left:2px}
 .rcbar .rcmax{color:rgba(232,236,245,.62);font-weight:600}
+.rcbar .rcmaxin{color:rgba(232,236,245,.62);font-weight:600;margin-left:4px}
 .rcbar > i{position:absolute;top:0;bottom:0;display:block}
 .rcbar .gh{border-radius:0 3px 3px 0;background:repeating-linear-gradient(135deg,
   color-mix(in srgb,var(--c) 26%,transparent) 0 3px,transparent 3px 6px);
@@ -405,7 +361,6 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
 .approw i{width:9px;height:9px;border-radius:99px}
 .approw em{font-style:normal;color:var(--dim);font-size:11px;display:block}
 @media (max-width:760px){ #legend{display:none} .lab{display:none} #credit{display:none}
-  #subbar{overflow-x:auto;scrollbar-width:none}
   #topbar{overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
   #topbar::-webkit-scrollbar{display:none} }
 </style>
@@ -430,16 +385,6 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
     <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="nhl" href="https://dataviz.aguywithascarf.com/releases/#nhl" target="_blank" rel="noopener"></a></div>
 </div>
 
-<div id="subbar">
-  <span class="lab">Group</span><div class="seg" id="groups"></div>
-  <div id="legend">
-    <span><i style="background:var(--win)"></i>win · 2 pts</span>
-    <span><i style="background:var(--win);opacity:.42;height:4px"></i>OT/SO loss · 1 pt</span>
-    <span><i style="background:var(--loss)"></i>loss</span>
-    <span><i style="background:rgba(150,166,205,.45)"></i>still to play</span>
-  </div>
-</div>
-
 <div id="wrap"></div>
 <div id="tip"></div>
 
@@ -460,17 +405,18 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
 <div class="mod" id="hmodal" onclick="if(event.target===this)closeMods()">
   <div class="mbox" onclick="event.stopPropagation()">
     <h3>How to read this</h3>
-    <p>Every team's season as a <b>shape</b>. All 32 share one baseline:
-      <b>wins build upward, losses hang downward, and games still to play hang from
-      the ceiling.</b></p>
+    <p>The playoff race, conference by conference. Each bar is a team's <b>points</b> — two
+      for a win, one for an overtime or shootout loss (the paler end of the bar) — and the
+      <b>faint stripes</b> run on to the most it can still reach.</p>
     <ul>
-      <li>An <b>overtime or shootout loss</b> is a half-height, faded box <i>above</i> the
-        line: it earns one point where a win earns two. So the height of everything above
-        the line is exactly the team's <b>points</b> — the standings, drawn.</li>
-      <li>Every box is to scale across the page, and the slider replays the season game by
-        game while the teams <b>re-sort live</b> by points (then regulation wins).</li>
-      <li>A team's colour is its own, except where the primary is near-black and the
-        secondary reads better.</li>
+      <li>The <b>dashed line</b> is the playoff cut if the season ended now: the top three of
+        each division (A1, M2, C3…) and two wild cards (WC1, WC2) per conference. Spots and
+        the line appear once every team has played.</li>
+      <li>A team <b>fades</b> once eight teams already have more points than it can still
+        reach — it is certainly out. On the latest night, a filled tag means the league has
+        confirmed a clinched spot.</li>
+      <li>The <b>slider</b> replays the race game by game; hover a team for its record, games
+        left and its distance from the line.</li>
       <li><b>Bracket</b> shows the playoffs, round by round, to the Stanley Cup.</li>
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> step a game · <kbd>space</kbd> play ·
@@ -488,7 +434,7 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
       <li><b>Schedule and results</b> — the NHL's public API. Records reconciled against
         the official standings for all 32 teams.</li>
       <li><b>Crests</b> — official NHL artwork from assets.nhle.com.</li>
-      <li>The towers show the regular season only; the playoffs are the Bracket view.</li>
+      <li>The race shows the regular season only; the playoffs are the Bracket view.</li>
     </ul>
   </div>
 </div>
@@ -509,17 +455,6 @@ const TEAMS = D.teams;
 /* Every regular-season game counts toward the record in the NHL, so this is all of them. */
 const counting = t => t.games;
 const MAXG = Math.max(...TEAMS.map(t => counting(t).length), 1);
-
-/* The tallest column the page will ever have to draw, in cells. Sizing off an average
-   instead of this is what made a 64-win tower overflow its box and collide with the
-   labels. Measured over the WHOLE season so the scale does not jump while animating. */
-const MAXNEED = Math.max(10, ...TEAMS.map(t => {
-  let w = 0, l = 0, o = 0;
-  counting(t).forEach(g => { if (g.res === 'W') w++; else if (g.res === 'L') l++;
-                             else if (g.res === 'OTL') o++; });
-  // An OT loss is half a cell, so it needs half the room.
-  return Math.max(w + o / 2, l, counting(t).length - w - l - o);
-}));
 
 /* Several primaries are near-black (Brooklyn and San Antonio are #000000 exactly), which
    is invisible on this background. Prefer the team's SECONDARY when the primary is too
@@ -560,7 +495,6 @@ const PREF = {
   set(k, v){ try { localStorage.setItem('nhltow.' + k, v); } catch(e){} }
 };
 
-let group = PREF.get('group', 'conf');
 let G     = MAXG;
 let playing = null;
 
@@ -576,93 +510,10 @@ function recordAt(t, n){
   return {w, l, o, rw, todo, pts: 2 * w + o, played: w + l + o};
 }
 
-function groupsOf(){
-  if (group === 'league') return [['The league', TEAMS]];
-  if (group === 'conf')
-    return [['Eastern Conference', TEAMS.filter(t => t.conf === 'Eastern')],
-            ['Western Conference', TEAMS.filter(t => t.conf === 'Western')]];
-  const divs = [];
-  ['Atlantic','Metropolitan','Central','Pacific'].forEach(d => {
-    const rows = TEAMS.filter(t => t.div === d);
-    if (rows.length) divs.push([d, rows]);
-  });
-  return divs;
-}
-
 function draw(){
   if (VIEW === 'bracket') return;      // the bracket owns #wrap while it is up
-  if (VIEW === 'race'){ document.getElementById('wrap').innerHTML = raceHtml(); return gnoLabel(); }
-  const wrap = document.getElementById('wrap');
-  const anyPlayed = TEAMS.some(t => counting(t).some(g => g.res));
-
-  wrap.innerHTML = groupsOf().map(([name, rows]) => {
-    const withRec = rows.map(t => ({t, r: recordAt(t, G)}));
-    // The NHL's own order: points, then regulation wins, then wins.
-    withRec.sort((a, b) => (b.r.pts - a.r.pts) || (b.r.rw - a.r.rw) || (b.r.w - a.r.w)
-      || (a.r.played - b.r.played) || a.t.nick.localeCompare(b.t.nick));
-
-    const towers = withRec.map(({t, r}) => {
-      const champ = t.po && t.po.outcome === 'CHAMPIONS';
-      // One box per game. Wins build upward from the baseline, losses hang below it,
-      // games not yet played hang from the ceiling -- so a season is a shape, and the
-      // silhouette IS the record.
-      const cell = 'height:var(--cell)';
-      // Wins first from the line, the overtime points on top of them.
-      const ups = Array.from({length: r.w}, () =>
-        `<i class="cellbox" style="${cell};background:${winColor(t)}"></i>`).join('') +
-        Array.from({length: r.o}, () =>
-        `<i class="cellbox ot" style="height:calc(var(--cell) / 2);background:${winColor(t)}"></i>`).join('');
-      const dns = Array.from({length: r.l}, () =>
-        `<i class="cellbox" style="${cell};background:var(--loss);opacity:.62"></i>`).join('');
-      const fut = Array.from({length: r.todo}, () =>
-        `<i class="cellbox" style="${cell};background:rgba(150,166,205,.45)"></i>`).join('');
-      return `<div class="tw ${champ ? 'champ' : ''}" data-ab="${t.abbr}">
-        <div class="stack">
-          <div class="fut">${fut}</div>
-          <div class="up">${ups}</div>
-          <div class="mid"></div>
-          <div class="dn">${dns}</div>
-        </div>
-        <div class="tlab">
-          <img src="${crest(t.abbr)}" alt="" loading="lazy">
-          <span class="ab">${esc(t.abbr)}${champ ? ' ★' : ''}</span>
-          <span class="rc">${anyPlayed ? `<b>${r.pts}</b> pts` : `${counting(t).length} gms`}</span>
-        </div>
-      </div>`;
-    }).join('');
-
-    return `<div class="group"><div class="ghead">${esc(name)}</div>
-      <div class="rowt">${towers}</div></div>`;
-  }).join('') || '<div class="empty">No teams.</div>';
-
-  if (!anyPlayed){
-    wrap.insertAdjacentHTML('afterbegin',
-      `<div class="empty">The ${esc(SEASON)} season has not started yet — every game hangs
-       from the ceiling, waiting, and the towers fill in as it is played.
-       ${MAXG} games per team this season.</div>`);
-  }
-  sizeCells();
-  document.getElementById('gno').innerHTML = anyPlayed
-    ? `game <b>${G}</b> of ${MAXG}` : `<b>${MAXG}</b> games scheduled`;
-}
-
-/* Every box is the same height across the whole page, and the tallest column that can
-   occur (MAXNEED cells above or below the line) must fit inside half a stack -- or the
-   towers overflow and, worse, lie about scale. */
-function sizeCells(){
-  const wrap = document.getElementById('wrap');
-  const groups = groupsOf().length;
-  const notice = wrap.querySelector('.empty');
-  const noticeH = notice ? notice.getBoundingClientRect().height : 0;
-  // Measured, not guessed: heading 18.5 + label block 49.6 + gaps ~16 + group margin 18.
-  // Guessing 88 here left the second conference's labels clipped below the fold.
-  const OVERHEAD = 108;
-  const PAD = 24;                            // #wrap's own top+bottom padding
-  const th = Math.max(96,
-    (wrap.clientHeight - groups * OVERHEAD - PAD - noticeH) / groups);
-  const cell = Math.max(1.05, Math.min(7, (th / 2 - 3) / MAXNEED));
-  document.documentElement.style.setProperty('--cell', cell.toFixed(2) + 'px');
-  document.documentElement.style.setProperty('--th', th.toFixed(0) + 'px');
+  document.getElementById('wrap').innerHTML = raceHtml();
+  gnoLabel();
 }
 
 /* How far the slider can go. In a season under way that is the most games any team has
@@ -693,7 +544,7 @@ addEventListener('resize', paintScrub);
 /* Standing rule in this family: a reload lands exactly where you were, never at the
    start, and the address bar is always shareable. */
 function syncHash(){
-  const want = VIEW === 'bracket' ? '#bracket' : VIEW === 'race' ? `#race/${G}` : `#${group}/${G}`;
+  const want = VIEW === 'bracket' ? '#bracket' : `#race/${G}`;
   if (location.hash !== want) history.replaceState(null, '', want);
   PREF.set('game', G);
   updateSocialMeta();
@@ -722,33 +573,22 @@ function updateSocialMeta(){
       socMeta('agwas:mentions', 'nhl');
       return;
     }
-    if (VIEW === 'race'){
       socMeta('agwas:title', `NHL Playoff Race, ${SEASON}`);
       socMeta('agwas:cta', `The ${SEASON} NHL playoff race` + (G >= CAP ? '' : ` after game ${G}`)
         + ' — full interactive experience below');
       socMeta('agwas:tags', 'nhl dataviz hockey playoffrace standings');
       socMeta('agwas:mentions', 'nhl');
-      return;
-    }
-    const scope = {league:'the whole league', conf:'by conference',
-                   div:'by division'}[group] || 'the whole league';
-    const done = G >= MAXG;
-    socMeta('agwas:title', `NHL Season Towers, ${SEASON}`);
-    socMeta('agwas:cta', `Every NHL team's ${SEASON} as a shape, ${scope}`
-      + (done ? '' : ` — after game ${G}`) + ' — full interactive experience below');
-    socMeta('agwas:tags', `nhl dataviz hockey seasontowers ${group}`);
-    socMeta('agwas:mentions', 'nhl');
   } catch(e) {}
 }
 function readHash(){
   if ((location.hash || '') === '#bracket') return {view: 'bracket'};
   const rm = /^#race\/(\d+)$/.exec(location.hash || '');
   if (rm) return {view: 'race', g: +rm[1]};
-  // #conf/82 now. The optional middle segment is the old order setting (#conf/wins/82),
-  // accepted and ignored so links shared before it was removed still open.
+  // The towers are gone; a link made for them (#conf/82, #league/wins/82) opens the race
+  // at the same game rather than breaking.
   const m = /^#([a-z]+)\/(?:[a-z]+\/)?(\d+)$/.exec(location.hash || '');
   if (!m) return null;
-  return {group: m[1], g: +m[2]};
+  return {view: 'race', g: +m[2]};
 }
 document.getElementById('slider').max = MAXG;
 paintScrub();
@@ -981,11 +821,16 @@ function raceHtml(){
      the stripes -- when there is room for both: late in a season the stripes shrink to a
      sliver, and then the ceiling is left to the tooltip rather than piled on the points. */
   const labels = r => {
+    // Two chips need about a quarter of the bar between them; with less, the ceiling
+    // chip landed on top of the points chip and hid it. Then both go in one chip.
     const room = 2 * r.left / SC * 100;             // stripe length, as % of the bar
-    const pts = `<b class="rcpts" style="left:calc(${pc(r.pts)}% + 5px)">${r.pts}<small>pts</small></b>`;
-    const max = room >= 13 ? `<b class="rcmax" style="right:calc(${(100 - +pc(r.max)).toFixed(2)}% + 4px)"
-      title="the most it can still reach">max ${r.max}</b>` : '';
-    return pts + max;
+    const at = `left:calc(${pc(r.pts)}% + 5px)`;
+    if (!r.left) return `<b class="rcpts" style="${at}">${r.pts}<small>pts</small></b>`;
+    if (room < 26) return `<b class="rcpts" style="${at}">${r.pts}<small>pts</small>
+      <span class="rcmaxin">· max ${r.max}</span></b>`;
+    return `<b class="rcpts" style="${at}">${r.pts}<small>pts</small></b>
+      <b class="rcmax" style="right:calc(${(100 - +pc(r.max)).toFixed(2)}% + 4px)"
+        title="the most it can still reach">max ${r.max}</b>`;
   };
   RACEROWS = {};
   const panel = conf => {
@@ -1042,9 +887,10 @@ function gnoLabel(){
 }
 
 /* ---------- which view ---------- */
-let VIEW = PREF.get('view', 'race');      // the race is the season view; towers stay one click away
+// A browser that last had the towers open remembers 'towers'; that view is gone.
+let VIEW = PREF.get('view', 'race') === 'bracket' ? 'bracket' : 'race';
 function drawViews(){
-  seg('views', [['towers', 'Towers'], ['race', 'Race'], ['bracket', 'Bracket']], VIEW, v => {
+  seg('views', [['race', 'Race'], ['bracket', 'Bracket']], VIEW, v => {
     VIEW = v; PREF.set('view', v); drawViews(); applyView();
   });
 }
@@ -1056,11 +902,7 @@ function applyView(){
   syncHash();
 }
 
-function drawGroups(){
-  seg('groups', [['league','League'],['conf','Conference'],['div','Division']], group,
-    v => { group = v; PREF.set('group', v); drawGroups(); draw(); syncHash(); });
-}
-drawGroups(); drawViews();
+drawViews();
 
 document.getElementById('strip').innerHTML =
   `<span class="pill on">Season</span>` +
@@ -1094,7 +936,7 @@ document.getElementById('applist').innerHTML = APPS.map(a =>
   `<a class="approw" href="${a[3]}" target="_blank" rel="noopener">
     <i style="background:${a[2]}"></i><span>${a[0]}<em>${a[1]}</em></span><span>\u2197</span></a>`).join('');
 
-/* hover tooltip on a tower */
+/* hover tooltip on a team in the race */
 const tip = document.getElementById('tip');
 function placeTip(e){
   const pad = 14;
@@ -1142,19 +984,7 @@ document.getElementById('wrap').addEventListener('mousemove', e => {
       ${r.clinched ? `<div class="t" style="color:var(--acc)">${SEASON_DONE && G >= MAXG ? 'made the playoffs' : 'clinched'}</div>` : ''}`;
     return placeTip(e);
   }
-  const tw = e.target.closest('.tw');
-  if (!tw){ tip.classList.remove('on'); return; }
-  const t = TEAMS.find(x => x.abbr === tw.dataset.ab);
-  const r = recordAt(t, G);
-  const last = counting(t).slice(0, G).filter(g => g.res).pop();
-  tip.innerHTML = `<div class="t">${esc(t.city)}</div><b>${esc(t.nick)}</b> ${r.w}-${r.l}-${r.o}
-    · <b>${r.pts}</b> pts
-    <div class="t" style="margin-top:3px">season goal diff ${sgn(t.diff)} ·
-      ${t.seed ? `${esc(t.conf)} ${t.seed} of 16` : esc(t.div)}</div>
-    ${last ? `<div class="t">latest: ${last.res === 'OTL' ? 'L' : last.res} ${last.us}-${last.them}${
-      last.end ? ' ' + last.end : ''} v ${esc(last.opp)}</div>` : ''}
-    ${t.po ? `<div class="t" style="color:var(--gold)">${esc(t.po.outcome)}</div>` : ''}`;
-  placeTip(e);
+  tip.classList.remove('on');
 });
 document.getElementById('wrap').addEventListener('mouseleave', () => tip.classList.remove('on'));
 
@@ -1168,33 +998,23 @@ addEventListener('keydown', e => {
   else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
   else if (e.key === 'Home') setG(1);
   else if (e.key === 'End') setG(CAP);
-  else if (e.key === 'b') { VIEW = VIEW === 'bracket' ? 'towers' : 'bracket';
+  else if (e.key === 'b') { VIEW = VIEW === 'bracket' ? 'race' : 'bracket';
                             PREF.set('view', VIEW); drawViews(); applyView(); }
 });
-addEventListener('resize', () => { sizeCells(); });
 
 (function start(){
   const h = readHash();
-  // #bracket is the whole state this view has; the towers keep their own.
+  // #bracket is the whole state that view has; #race/<game> names the race and its game.
   if (h && h.view === 'bracket'){ VIEW = 'bracket'; drawViews(); return applyView(); }
-  if (h && h.view === 'race'){ VIEW = 'race'; PREF.set('view', VIEW); drawViews(); applyView();
-                               return setG(h.g); }
-  if (h){
-    // A link that names the towers is a request for the towers: it beats the view
-    // remembered from last time, or a shared #conf/wins/82 would open on the bracket.
-    VIEW = 'towers'; PREF.set('view', VIEW); drawViews();
-    if (['league','conf','div'].includes(h.group)) group = h.group;
-    drawGroups();
-    setG(h.g);
+  if (h){ VIEW = 'race'; PREF.set('view', VIEW); drawViews(); setG(h.g);
   } else {
     let g = CAP;
     try { const saved = +PREF.get('game', CAP); if (saved >= 1 && saved <= CAP) g = saved; }
     catch(e){}
     setG(g);
   }
-  // A restored Bracket preference paints over the towers we just drew, which is cheap
-  // and keeps the slider state intact underneath for when you switch back.
-  if (VIEW === 'bracket') applyView();
+  // Paints the remembered view -- the race, or the bracket over it.
+  applyView();
 })();
 </script>
 </body>
