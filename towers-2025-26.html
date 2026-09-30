@@ -254,6 +254,17 @@ body.race #wrap{display:flex;flex-direction:column}
   border-bottom:1px solid var(--line);padding-bottom:5px}
 .rchd b{color:var(--ink);letter-spacing:.02em}
 .rcrows{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.rctabs{flex:0 0 auto}
+.rctabs .pill{padding:4px 11px;font-size:11px}
+/* A block title inside a panel (a division, "Wild card") and the line drawn between rows
+   where the playoff spots end. Fixed heights, so the rows keep sharing what is left. */
+.rcsub{flex:0 0 auto;padding:7px 0 2px 49px;font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim)}
+.rcsep{flex:0 0 auto;position:relative;height:11px}
+.rcsep::before{content:'';position:absolute;left:49px;right:0;top:50%;
+  border-top:1.5px dashed rgba(232,236,245,.55)}
+.rcsep span{position:absolute;right:0;top:50%;transform:translateY(-50%);padding:0 0 0 7px;
+  background:var(--bg);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
 .rcrow{flex:1 1 0;min-height:22px;display:grid;align-items:center;gap:9px;
   grid-template-columns:18px 22px 96px minmax(0,1fr) 66px 34px;font-size:12px;
   font-variant-numeric:tabular-nums;transition:opacity .2s}
@@ -544,7 +555,7 @@ addEventListener('resize', paintScrub);
 /* Standing rule in this family: a reload lands exactly where you were, never at the
    start, and the address bar is always shareable. */
 function syncHash(){
-  const want = VIEW === 'bracket' ? '#bracket' : `#race/${G}`;
+  const want = VIEW === 'bracket' ? '#bracket' : `#race/${RACETAB}/${G}`;
   if (location.hash !== want) history.replaceState(null, '', want);
   PREF.set('game', G);
   updateSocialMeta();
@@ -582,8 +593,9 @@ function updateSocialMeta(){
 }
 function readHash(){
   if ((location.hash || '') === '#bracket') return {view: 'bracket'};
-  const rm = /^#race\/(\d+)$/.exec(location.hash || '');
-  if (rm) return {view: 'race', g: +rm[1]};
+  // #race/wc/60 -- the tab is optional, so the first race links (#race/60) still open.
+  const rm = /^#race\/(?:(wc|div|conf|league)\/)?(\d+)$/.exec(location.hash || '');
+  if (rm) return {view: 'race', tab: rm[1], g: +rm[2]};
   // The towers are gone; a link made for them (#conf/82, #league/wins/82) opens the race
   // at the same game rather than breaking.
   const m = /^#([a-z]+)\/(?:[a-z]+\/)?(\d+)$/.exec(location.hash || '');
@@ -833,53 +845,113 @@ function raceHtml(){
         title="the most it can still reach">max ${r.max}</b>`;
   };
   RACEROWS = {};
-  const panel = conf => {
-    const {rows, cut} = raceConf(conf, G);
-    rows.forEach(r => { RACEROWS[r.t.abbr] = {...r, cut}; });
-    return `<div class="rcconf">
-      <div class="rchd"><span>${conf} Conference</span>
-        <span class="rcline">${cut == null ? 'spots and the line appear once every team has played'
-          : `playoff line <b>${cut}</b> pts`}</span></div>
-      <div class="rcrow" style="flex:0 0 auto;min-height:0"><span></span><span></span><span></span>
+  const axis = `<div class="rcrow" style="flex:0 0 auto;min-height:0"><span></span><span></span><span></span>
         <span class="rcaxis">${ticks}</span><span class="rec" style="font-size:9px;letter-spacing:.08em;
-          color:var(--dim)">W-L-OTL</span><span></span></div>
-      <div class="rcrows">${rows.map((r, i) => {
-        const c = winColor(r.t);
-        const tag = r.tag ? `<span class="tag${r.tag.startsWith('WC') ? ' wc' : ''}">${r.tag}</span>`
-                          : '<span class="tag none">–</span>';
-        return `<div class="rcrow${r.out ? ' out' : ''}${r.clinched ? ' clinched' : ''}" data-ab="${r.t.abbr}"
-            style="--c:${c}">
-          <span class="rk">${i + 1}</span>
-          <img src="${crest(r.t.abbr)}" alt="" loading="lazy">
-          <span class="nm">${esc(r.t.nick)}</span>
-          <span class="rcbar">
-            <i class="gh" style="left:${pc(r.pts)}%;width:${pc(2 * r.left)}%"></i>
-            <i class="w" style="left:0;width:${pc(2 * r.w)}%"></i>
-            <i class="o" style="left:${pc(2 * r.w)}%;width:${pc(r.o)}%"></i>
-            ${cut == null ? '' : `<i class="cut" style="left:${pc(cut)}%"></i>`}
-            ${labels(r)}
-          </span>
-          <span class="rec">${r.w}-${r.l}-${r.o}</span>${tag}
-        </div>`;
-      }).join('')}</div>
+          color:var(--dim)">W-L-OTL</span><span></span></div>`;
+  const row = (r, rank, cut) => {
+    const tag = r.tag ? `<span class="tag${r.tag.startsWith('WC') ? ' wc' : ''}">${r.tag}</span>`
+                      : '<span class="tag none">–</span>';
+    return `<div class="rcrow${r.out ? ' out' : ''}${r.clinched ? ' clinched' : ''}" data-ab="${r.t.abbr}"
+        style="--c:${winColor(r.t)}">
+      <span class="rk">${rank}</span>
+      <img src="${crest(r.t.abbr)}" alt="" loading="lazy">
+      <span class="nm">${esc(r.t.nick)}</span>
+      <span class="rcbar">
+        <i class="gh" style="left:${pc(r.pts)}%;width:${pc(2 * r.left)}%"></i>
+        <i class="w" style="left:0;width:${pc(2 * r.w)}%"></i>
+        <i class="o" style="left:${pc(2 * r.w)}%;width:${pc(r.o)}%"></i>
+        ${cut == null ? '' : `<i class="cut" style="left:${pc(cut)}%"></i>`}
+        ${labels(r)}
+      </span>
+      <span class="rec">${r.w}-${r.l}-${r.o}</span>${tag}
     </div>`;
   };
+  const subhd = txt => `<div class="rcsub">${txt}</div>`;
+  const sep = txt => `<div class="rcsep"><span>${txt}</span></div>`;
+  const lineNote = cut => cut == null ? 'spots and the line appear once every team has played'
+                                      : `playoff line <b>${cut}</b> pts`;
+  const C = {};
+  ['Eastern', 'Western'].forEach(c => {
+    C[c] = raceConf(c, G);
+    C[c].rows.forEach(r => { RACEROWS[r.t.abbr] = {...r, cut: C[c].cut}; });
+  });
+  const DIVS = {Eastern: ['Atlantic', 'Metropolitan'], Western: ['Central', 'Pacific']};
+  const panel = (title, note, inner) => `<div class="rcconf">
+      <div class="rchd"><span>${title}</span><span class="rcline">${note}</span></div>
+      ${axis}<div class="rcrows">${inner}</div></div>`;
+
+  let cols;
+  if (RACETAB === 'wc'){
+    /* nhl.com's own layout: each division's top three, then one wild-card list for the
+       rest of the conference, cut under the second. */
+    cols = ['Eastern', 'Western'].map(c => {
+      const {rows, cut} = C[c];
+      let html = '';
+      const top = new Set();
+      DIVS[c].forEach(d => {
+        const three = rows.filter(r => r.t.div === d).slice(0, 3);
+        three.forEach(r => top.add(r));
+        html += subhd(d) + three.map((r, i) => row(r, i + 1, cut)).join('');
+      });
+      const rest = rows.filter(r => !top.has(r));
+      html += subhd('Wild card') + rest.map((r, i) => row(r, i + 1, cut)
+        + (i === 1 && cut != null && rest.length > 2 ? sep('playoff line') : '')).join('');
+      return panel(`${c} Conference`, lineNote(cut), html);
+    });
+  } else if (RACETAB === 'div'){
+    cols = ['Eastern', 'Western'].map(c => {
+      const {rows, cut} = C[c];
+      const html = DIVS[c].map(d => {
+        const inDiv = rows.filter(r => r.t.div === d);
+        return subhd(d) + inDiv.map((r, i) => row(r, i + 1, cut)
+          + (i === 2 && cut != null ? sep('top three are in') : '')).join('');
+      }).join('');
+      return panel(`${c} Conference`, lineNote(cut), html);
+    });
+  } else if (RACETAB === 'league'){
+    // The Presidents' Trophy race. No line: the spots are decided within each conference,
+    // so a single cut through all 32 would be wrong for half of them. Tags still say who holds one.
+    const all = C.Eastern.rows.concat(C.Western.rows).sort(byPts);
+    cols = [all.slice(0, 16), all.slice(16)].map((part, k) => panel(
+      k ? 'League · 17–32' : 'League · 1–16', k ? '' : 'no line: spots are won within a conference',
+      part.map((r, i) => row(r, k * 16 + i + 1, null)).join('')));
+  } else {
+    cols = ['Eastern', 'Western'].map(c => panel(`${c} Conference`, lineNote(C[c].cut),
+      C[c].rows.map((r, i) => row(r, i + 1, C[c].cut)).join('')));
+  }
+
+  const NOTE = {
+    wc: `Laid out as the NHL decides it: the top three of each division are in, and the next
+      two in the conference take the wild cards — the line sits under them.`,
+    div: `Each division in full. Its top three are guaranteed a spot; below them, teams chase
+      the two wild cards against the other division in their conference.`,
+    conf: `Each conference ranked by points. The line is the playoff cut if the season ended
+      now; the tag says which spot a team holds.`,
+    league: `All 32 teams by points — the Presidents' Trophy race.`,
+  }[RACETAB];
   const any = TEAMS.some(t => counting(t).some(g => g.res));
   return `<div class="rchead">
       <h2>The playoff race${!any ? '' : SEASON_DONE && G >= MAXG ? ', final'
         : G >= CAP ? ', tonight' : `, after game ${G}`}</h2>
+      <div class="seg rctabs">${RACETABS.map(([k, l]) =>
+        `<button class="pill ${k === RACETAB ? 'on' : ''}" onclick="setRaceTab('${k}')">${l}</button>`).join('')}</div>
       <div class="rckey">
         <span><i style="background:var(--acc)"></i>points won</span>
         <span><i style="background:var(--acc);opacity:.45"></i>from OT/SO losses</span>
         <span><i style="background:repeating-linear-gradient(135deg,rgba(42,159,216,.35) 0 3px,transparent 3px 6px)"></i>still possible</span>
         <span><i style="background:none;border-left:1.5px dashed var(--ink);width:6px;border-radius:0"></i>playoff line</span>
       </div>
-      <p>Each bar is a team's points; the faint stripes run on to every point it could still
-        win. The dashed line is the playoff cut if the season ended now — the top three of
-        each division (A1, M2, C3…) and two wild cards (WC1, WC2) per conference. When a team's
-        stripes can no longer reach eight teams already above it, it is out, and fades.</p>
+      <p>${NOTE.replace(/\s+/g, ' ')} The stripes run on to the most a team can still reach; once
+        eight teams in its conference are beyond that, it is out, and fades.</p>
     </div>
-    <div class="rcgrid">${panel('Eastern')}${panel('Western')}</div>`;
+    <div class="rcgrid">${cols.join('')}</div>`;
+}
+const RACETABS = [['wc', 'Wild card'], ['div', 'Division'], ['conf', 'Conference'], ['league', 'League']];
+let RACETAB = RACETABS.some(x => x[0] === PREF.get('racetab', 'wc')) ? PREF.get('racetab', 'wc') : 'wc';
+function setRaceTab(k){
+  if (!RACETABS.some(x => x[0] === k)) return;
+  RACETAB = k; PREF.set('racetab', k);
+  draw(); syncHash();
 }
 function gnoLabel(){
   document.getElementById('gno').innerHTML = LASTG
@@ -1006,7 +1078,9 @@ addEventListener('keydown', e => {
   const h = readHash();
   // #bracket is the whole state that view has; #race/<game> names the race and its game.
   if (h && h.view === 'bracket'){ VIEW = 'bracket'; drawViews(); return applyView(); }
-  if (h){ VIEW = 'race'; PREF.set('view', VIEW); drawViews(); setG(h.g);
+  if (h){ VIEW = 'race'; PREF.set('view', VIEW); drawViews();
+    if (h.tab){ RACETAB = h.tab; PREF.set('racetab', h.tab); }
+    setG(h.g);
   } else {
     let g = CAP;
     try { const saved = +PREF.get('game', CAP); if (saved >= 1 && saved <= CAP) g = saved; }
