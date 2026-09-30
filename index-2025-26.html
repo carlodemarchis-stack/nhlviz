@@ -1524,9 +1524,10 @@ function coverCard(){
     <div class="coverbg"></div>
     <div class="kick">A Guy With A Scarf · Season Film</div>
     <h1>The NHL ${SEASON} season,<br><em>card by card</em></h1>
-    <p>${games ? `${SEASON}, read end to end: the ${D.players.length} leading scorers and the
+    <p>${games ? `${SEASON}, read ${SEASON_DONE ? 'end to end' : `as it happens — ${fmt(games)} of
+      ${fmt(sched)} games played`}: the ${D.players.length} leading scorers and the
       ${GOALIES.length} goalies with the most wins, the charts that rank them, then all
-      ${teams} teams in order of points and the table they finished on.
+      ${teams} teams in order of points and ${SEASON_DONE ? 'the table they finished on' : 'the table as it stands'}.
       ${champ ? `<b>${tlink(champ.abbr, esc(champ.name))}</b> lifted the Stanley Cup.` : ''}`
       : `${SEASON} before the puck drops: all ${teams} teams and the published schedule of
       ${fmt(sched)} games, ${Math.round(sched * 2 / teams)} each. The player cards and the
@@ -1556,8 +1557,10 @@ function teamCard(t){
             title="${g.ha === 'H' ? 'home' : 'away'} ${g.us}-${g.them}${g.end ? ' (' + g.end + ')' : ''}">${g.res || ''}</i>`
         ).join('')}</span></div>`).join('')}
     </div>`
-    : t.w + t.l + t.otl ? `<div class="box"><div class="k">Playoffs</div>
-       <div style="font-size:12px;color:var(--dim);margin-top:3px">Did not qualify.</div></div>` : '';
+    : ({missed: 'Did not qualify.', out: 'Eliminated from playoff contention.',
+        in: 'Clinched a playoff spot.'}[poState(t)] || '') && `<div class="box"><div class="k">Playoffs</div>
+       <div style="font-size:12px;color:var(--dim);margin-top:3px">${{missed: 'Did not qualify.',
+         out: 'Eliminated from playoff contention.', in: 'Clinched a playoff spot.'}[poState(t)]}</div></div>`;
 
   const roster = t.roster.length ? `<div class="rost panel" style="padding:11px 12px">
       <div class="rhd"><span>Who played</span>
@@ -1661,13 +1664,15 @@ function teamBody(t, {roster, champ, special, po}){
             <div><div class="v">${t.streak.W}</div><div class="k">Best run</div></div>
             <div><div class="v">${t.streak.L}</div><div class="k">Winless run</div></div>
           </div></div>` : ''}
-          ${(t.best && t.worst) ? `<div class="box"><div class="kv" style="grid-template-columns:1fr 1fr">
-            <div><div class="v" style="font-size:15px">${t.best.us}-${t.best.them}
+          ${(t.best || t.worst) ? `<div class="box"><div class="kv" style="grid-template-columns:1fr 1fr">
+            ${t.best ? `<div><div class="v" style="font-size:15px">${t.best.us}-${t.best.them}
               <small>v ${tlink(t.best.opp, esc(t.best.opp))}</small></div>
-              <div class="k">Biggest win · ${WHEN(t.best.date)}</div></div>
-            <div><div class="v" style="font-size:15px">${t.worst.us}-${t.worst.them}
+              <div class="k">Biggest win · ${WHEN(t.best.date)}</div></div>`
+              : '<div><div class="v" style="font-size:15px;color:var(--dim)">–</div><div class="k">No win yet</div></div>'}
+            ${t.worst ? `<div><div class="v" style="font-size:15px">${t.worst.us}-${t.worst.them}
               <small>v ${tlink(t.worst.opp, esc(t.worst.opp))}</small></div>
-              <div class="k">Heaviest defeat · ${WHEN(t.worst.date)}</div></div>
+              <div class="k">Heaviest defeat · ${WHEN(t.worst.date)}</div></div>`
+              : '<div><div class="v" style="font-size:15px;color:var(--dim)">–</div><div class="k">No defeat yet</div></div>'}
           </div></div>` : ''}
           ${goalies}
           ${po}
@@ -1792,7 +1797,7 @@ function playerCard(p){
             <span class="jteam">${tlink(p.team, esc(t.name || p.team))}</span>
             <span class="jwl" title="${gk ? 'His own decisions: won-lost-overtime loss'
                 : `${traded ? 'His teams’' : esc(t.name || p.team) + '’s'} record in the ${p.gp} games he played`}"
-              >${gk ? rec3(p.w, p.l, p.otl) : rec3(wl[0], wl[1], wl[2])}<i class="jsep">·</i><i
+              >${gk ? rec3(p.w, p.l, p.otl) : rec3(wl[0], wl[1], wl[2])}${e.txt ? '<i class="jsep">·</i>' : ''}<i
                 class="jpo${e.champ ? ' champ' : ''}">${e.txt}</i></span></div>
           <img src="${head(p.id)}" alt="${esc(p.name)}" loading="lazy"
                onerror="this.style.display='none'">
@@ -1955,7 +1960,7 @@ function barcodeCard(){
     return `<div class="bcconf">
       <div class="bcrow hd"><span></span><span></span><span>${conf}</span>
         <span class="bcaxis">${axis}</span><span class="pt">Pts</span><span class="rc">W-L-OT</span></div>
-      ${rows.map(t => `<div class="bcrow${played && !t.po ? ' out' : ''}">
+      ${rows.map(t => `<div class="bcrow${DIM(t) ? ' out' : ''}">
         <span class="rk">${t.seed || ''}</span>
         <img src="${crest(t.abbr)}" alt="" loading="lazy">
         <span class="nm">${tlink(t.abbr, esc(t.nick))}${t.po && t.po.outcome === 'CHAMPIONS'
@@ -1976,7 +1981,8 @@ function barcodeCard(){
       it was played: <b style="color:var(--win)">win</b>, <b style="color:var(--otl)">overtime or
       shootout loss</b> (a point), <b style="color:var(--loss)">regulation loss</b>${played ? '' :
       ', grey still to play'}. A <b style="color:var(--win)">green cell with a dark dot</b> is a win settled in
-      overtime or a shootout. Rows in standings order${played ? '; dimmed teams missed the playoffs' : ''}.
+      overtime or a shootout. Rows in standings order${SEASON_DONE ? '; dimmed teams missed the playoffs'
+        : D.teams.some(DIM) ? '; dimmed teams are eliminated' : ''}.
       Hover a cell for the game.</p>
     <div class="bc">${block('Eastern')}${block('Western')}</div>
   </div>`;
@@ -1988,7 +1994,7 @@ function ladderCard(){
       .sort((a,b) => (a.seed || 99) - (b.seed || 99) || b.pts - a.pts);
     return `<div class="lcol"><div class="lrow hd"><span></span><span></span><span></span>
         <span>W-L-OT</span><span>PTS</span><span>GD</span></div>${rows.map(t => `
-      <div class="lrow ${t.po ? '' : 'out'}">
+      <div class="lrow ${DIM(t) ? 'out' : ''}">
         <span class="rk" style="color:var(--dim);text-align:right">${t.seed || '–'}</span>
         <img src="${crest(t.abbr)}" alt="" loading="lazy">
         <span class="nm">${tlink(t.abbr, esc(t.nick))}
@@ -2002,10 +2008,10 @@ function ladderCard(){
   return `<div class="in">
     <div class="kick">Chart · the standings</div>
     <h2 style="font-size:clamp(19px,2.2vw,29px);font-weight:700;letter-spacing:-.02em">
-      How ${SEASON} finished</h2>
+      ${SEASON_DONE ? `How ${SEASON} finished` : `The ${SEASON} standings, so far`}</h2>
     <p style="font-size:12px;color:var(--dim)">Conference position, record, points and goal
-      difference. Two points for a win, one for an overtime or shootout loss. Dimmed teams
-      missed the playoffs.</p>
+      difference. Two points for a win, one for an overtime or shootout loss.${SEASON_DONE
+      ? ' Dimmed teams missed the playoffs.' : D.teams.some(DIM) ? ' Dimmed teams are eliminated.' : ''}</p>
     <div class="ladder">
       <div style="display:flex;flex-direction:column;min-height:0">
         <div class="kick" style="margin-bottom:6px">Eastern Conference</div>${col('Eastern')}</div>
@@ -2015,9 +2021,30 @@ function ladderCard(){
   </div>`;
 }
 
+/* Where a team stands on the playoffs. "No playoff run" only means "missed the playoffs"
+   once the regular season is over -- mid-season it means nothing has been decided, unless
+   the league's own standings already say clinched or eliminated. Every card asks here
+   rather than reading t.po directly, which is how opening night told all 32 teams they
+   had not qualified. */
+const SEASON_DONE = D.teams.length > 0 && D.teams.every(t => t.games.every(g => g.res));
+function poState(t){
+  if (t.po) return 'run';
+  if (SEASON_DONE) return 'missed';
+  if (t.clinch === 'e') return 'out';
+  if (['x', 'y', 'z', 'p'].includes(t.clinch)) return 'in';
+  return 'open';
+}
+const DIM = t => ['missed', 'out'].includes(poState(t));
+
 function poEnding(t){
   const o = (t && t.po && t.po.outcome) || '';
-  if (!o) return {txt: 'Missed playoffs', champ: false, miss: true};
+  if (!o){
+    const st = poState(t);
+    return st === 'missed' ? {txt: 'Missed playoffs', champ: false, miss: true}
+         : st === 'out' ? {txt: 'Eliminated', champ: false, miss: true}
+         : st === 'in' ? {txt: 'Clinched', champ: false}
+         : {txt: '', champ: false};
+  }
   if (o === 'CHAMPIONS') return {txt: 'Stanley Cup', champ: true};
   const phase = o.replace(/^(Lost|Won) the /, '')
                  .replace(/^Stanley Cup Final$/, 'Cup Final')

@@ -270,7 +270,10 @@ def main(label):
         ga = sum(g["them"] for g in done)
         home = [g for g in done if g["ha"] == "H"]
         away = [g for g in done if g["ha"] == "A"]
-        margins = sorted(done, key=lambda g: (g["us"] - g["them"], g["us"]))
+        # The biggest WIN among the wins and the heaviest DEFEAT among the defeats: sorting
+        # every game by margin made one early-season win both at once.
+        wins = sorted((g for g in done if g["res"] == "W"), key=lambda g: (g["us"] - g["them"], g["us"]))
+        losses = sorted((g for g in done if g["res"] != "W"), key=lambda g: (g["us"] - g["them"], g["us"]))
         s = st_of.get(ab, {})
         n = max(1, len(done))
 
@@ -318,12 +321,12 @@ def main(label):
             "streak": streaks(games),
             "ot": {"w": sum(1 for g in done if g["res"] == "W" and g["end"]),
                    "l": o, "so": sum(1 for g in done if g["end"] == "SO")},
-            "best": ({"opp": margins[-1]["opp"], "us": margins[-1]["us"],
-                      "them": margins[-1]["them"], "date": margins[-1]["date"]}
-                     if margins else None),
-            "worst": ({"opp": margins[0]["opp"], "us": margins[0]["us"],
-                       "them": margins[0]["them"], "date": margins[0]["date"]}
-                      if margins else None),
+            "best": ({"opp": wins[-1]["opp"], "us": wins[-1]["us"],
+                      "them": wins[-1]["them"], "date": wins[-1]["date"]}
+                     if wins else None),
+            "worst": ({"opp": losses[0]["opp"], "us": losses[0]["us"],
+                       "them": losses[0]["them"], "date": losses[0]["date"]}
+                      if losses else None),
             "games": [{"g": g["g"], "opp": g["opp"], "ha": g["ha"], "res": g["res"],
                        "us": g["us"], "them": g["them"], "date": g["date"],
                        **({"end": g["end"]} if g.get("end") else {}),
