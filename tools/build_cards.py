@@ -166,7 +166,7 @@ def main(label):
     shots = defaultdict(list)       # skater -> [(x, y, kind)]  regular season
     faced = defaultdict(list)       # goalie -> [(x, y, kind)]  regular season
     jersey = defaultdict(Counter)   # (pid, team) -> number worn
-    pos_of, nm_box = {}, {}
+    pos_of, nm_box, full_name = {}, {}, {}
     empty_net = Counter()
 
     ids = sorted({g["id"] for gs in sched.values() for g in gs if g["res"]} |
@@ -182,6 +182,8 @@ def main(label):
         home_id, away_id = pbp["homeTeam"]["id"], pbp["awayTeam"]["id"]
         ab_of = {home_id: pbp["homeTeam"]["abbrev"], away_id: pbp["awayTeam"]["abbrev"]}
         gdate = box["gameDate"]
+        for rs in pbp.get("rosterSpots", []):
+            full_name.setdefault(rs["playerId"], f"{rs['firstName']['default']} {rs['lastName']['default']}")
 
         # primary / secondary assists, and shot locations, from the play-by-play.
         a1, a2 = Counter(), Counter()
@@ -244,6 +246,8 @@ def main(label):
                         sk_po[pid].append(row[:1] + (ab, gid) + row[2:])
                     else:
                         sk_log[pid].append(row[:2] + (gidx[(ab, gid)],) + row[2:])
+            # A shutout is credited only to a goalie who played the whole game alone.
+            in_net = [r for r in blk.get("goalies", []) if mins(r.get("toi")) > 0]
             for r in blk.get("goalies", []):
                 t = mins(r.get("toi"))
                 if t <= 0:
@@ -253,7 +257,8 @@ def main(label):
                 nm_box.setdefault(pid, r["name"]["default"])
                 jersey[(pid, ab)][r.get("sweaterNumber")] += 1
                 row = (gdate, ab, t, r.get("shotsAgainst", 0), r.get("goalsAgainst", 0),
-                       r.get("decision"), 1 if r.get("starter") else 0)
+                       r.get("decision"), 1 if r.get("starter") else 0, len(in_net) == 1,
+                       r.get("saves", r.get("shotsAgainst", 0) - r.get("goalsAgainst", 0)))
                 if playoff:
                     gk_po[pid].append(row[:1] + (ab, gid) + row[2:])
                 else:
@@ -344,6 +349,39 @@ def main(label):
     by_ab = {t["abbr"]: t for t in out_teams}
 
     # ---- players -----------------------------------------------------------------------
+    # The core numbers come from the box scores, which are in the moment a game ends. The
+    # league's season summary updates hours later, and taking games/goals/points from it
+    # left a card whose header said 2 games under a game chart showing 3. The summary now
+    # supplies only what box scores lack (power play, game-winners, faceoffs, bios) and
+    # is the reconciliation target once it has caught up.
+    def sk_tot(pid):
+        log = sk_log.get(pid, [])
+        g = sum(x[4] for x in log)
+        a = sum(x[12] for x in log)
+        return {"gp": len(log), "g": g, "a": a, "pts": g + a,
+                "sog": sum(x[7] for x in log), "hits": sum(x[8] for x in log),
+                "blk": sum(x[9] for x in log), "pm": sum(x[10] for x in log),
+                "pim": sum(x[11] for x in log), "toi": sum(x[3] for x in log)}
+
+    def gk_tot(pid):
+        log = gk_log.get(pid, [])
+        dec = Counter(x[6] for x in log)
+        sa = sum(x[4] for x in log)
+        ga = sum(x[5] for x in log)
+        # The box score's own saves, not shots minus goals: now and then a goal counts
+        # against a goalie without being a shot on goal (two of Vasilevskiy's in 2025-26),
+        # and shots minus goals then runs a save short of the league's figure.
+        sv = sum(x[9] for x in log)
+        toi = sum(x[3] for x in log)
+        return {"gp": len(log), "gs": sum(x[7] for x in log), "w": dec["W"], "l": dec["L"],
+                "o": dec["O"], "sa": sa, "ga": ga, "sv": sv, "toi": toi,
+                "svp_raw": sv / sa if sa else 0.0, "svp": r3(sv / sa) if sa else 0.0,
+                "gaa": round(ga * 60 / toi, 2) if toi else 0.0,
+                "so": sum(1 for x in log if x[5] == 0 and x[8])}
+
+    SKT = {pid: sk_tot(pid) for pid in sk_log}
+    GKT = {pid: gk_tot(pid) for pid in gk_log}
+
     def teams_of(log):
         order, cnt = [], Counter()
         for x in sorted(log):
@@ -396,21 +434,20 @@ def main(label):
             pol.append([r[4] + r[12], r[4], r[5], r[6], r[7], r[8], r1(r[3]),
                         ROUND_ORDER.index(round_of(r[2])), g["res"], g["opp"], g["us"], g["them"],
                         g["ha"], g["date"], g.get("end")])
-        name = s.get("skaterFullName") or nm_box.get(pid)
-        toi = s.get("timeOnIcePerGame") or 0
+        name = s.get("skaterFullName") or full_name.get(pid) or nm_box.get(pid)
+        b = SKT[pid]
         return {
             "kind": "s", "rank": rank, "id": pid, "name": name,
             "team": team, "teams": tl, "pos": s.get("positionCode") or pos_of.get(pid),
             "jersey": jersey_of(pid, tl), **bio(s, pid, label),
-            "gp": s.get("gamesPlayed", len(log)), "g": s.get("goals", 0),
-            "a": s.get("assists", 0), "pts": s.get("points", 0),
-            "pm": s.get("plusMinus", 0), "pim": s.get("penaltyMinutes", 0),
+            "gp": b["gp"], "g": b["g"], "a": b["a"], "pts": b["pts"],
+            "pm": b["pm"], "pim": b["pim"],
             "ppp": s.get("ppPoints", 0), "ppg_": s.get("ppGoals", 0),
             "shp": s.get("shPoints", 0), "gwg": s.get("gameWinningGoals", 0),
-            "otg": s.get("otGoals", 0), "sog": s.get("shots", 0),
-            "shpct": r1(100 * (s.get("shootingPct") or 0)),
-            "toi": r1(toi / 60), "ppm": round(s.get("points", 0) / max(1, s.get("gamesPlayed", 1)), 2),
-            "hits": s.get("hits", 0), "blk": s.get("blockedShots", 0),
+            "otg": s.get("otGoals", 0), "sog": b["sog"],
+            "shpct": r1(100 * b["g"] / b["sog"]) if b["sog"] else 0.0,
+            "toi": r1(b["toi"] / max(1, b["gp"])), "ppm": round(b["pts"] / max(1, b["gp"]), 2),
+            "hits": b["hits"], "blk": b["blk"],
             "fo": r1(100 * s["faceoffWinPct"]) if s.get("faceoffWinPct") else None,
             "take": s.get("takeaways", 0), "give": s.get("giveaways", 0),
             "a1": sum(x[5] for x in log), "a2": sum(x[6] for x in log),
@@ -449,23 +486,21 @@ def main(label):
         pol = []
         for r in sorted(gk_po.get(pid, [])):
             g = po_meta[(r[1], r[2])]
-            pol.append([r[4] - r[5], r[5], r1(r[3]), r[6],
+            pol.append([r[9], r[5], r1(r[3]), r[6],
                         ROUND_ORDER.index(round_of(r[2])), g["res"], g["opp"], g["us"],
                         g["them"], g["ha"], g["date"], g.get("end")])
-        saves_log = [x[4] - x[5] for x in log]
+        saves_log = [x[9] for x in log]
         best = max(range(len(log)), key=lambda i: (saves_log[i], -log[i][5]), default=None)
         bg = by_ab[log[best][1]]["games"][log[best][2]] if best is not None else None
-        name = s.get("goalieFullName") or nm_box.get(pid)
+        name = s.get("goalieFullName") or full_name.get(pid) or nm_box.get(pid)
+        b = GKT[pid]
         return {
             "kind": "g", "rank": rank, "id": pid, "name": name,
             "team": team, "teams": tl, "pos": "G", "jersey": jersey_of(pid, tl),
             **bio(s, pid, label),
-            "gp": s.get("gamesPlayed", len(log)), "gs": s.get("gamesStarted", 0),
-            "w": s.get("wins", 0), "l": s.get("losses", 0), "otl": s.get("otLosses", 0),
-            "svp": r3(s.get("savePct") or 0), "gaa": round(s.get("goalsAgainstAverage") or 0, 2),
-            "so": s.get("shutouts", 0), "sv": s.get("saves", 0), "sa": s.get("shotsAgainst", 0),
-            "ga": s.get("goalsAgainst", 0), "qs": s.get("qualityStart", 0),
-            "toi": r1((s.get("timeOnIce") or 0) / 60),
+            "gp": b["gp"], "gs": b["gs"], "w": b["w"], "l": b["l"], "otl": b["o"],
+            "svp": b["svp"], "gaa": b["gaa"], "so": b["so"], "sv": b["sv"], "sa": b["sa"],
+            "ga": b["ga"], "qs": s.get("qualityStart", 0), "toi": r1(b["toi"]),
             "log": saves_log,
             # [team index, game index, toi, shots against, goals against, decision, started]
             "glog": [[tix[x[1]], x[2], r1(x[3]), x[4], x[5], x[6] or "", x[7]] for x in log],
@@ -484,11 +519,12 @@ def main(label):
         }
 
     # The order: points, then goals (the Art Ross tiebreak), then fewer games.
-    sk_pool = sorted((int(k), v) for k, v in SK.items() if int(k) in sk_log)
-    sk_pool.sort(key=lambda kv: (-kv[1]["points"], -kv[1]["goals"], kv[1]["gamesPlayed"],
-                                 kv[1]["skaterFullName"]))
-    gk_pool = sorted((int(k), v) for k, v in GK.items() if int(k) in gk_log)
-    gk_pool.sort(key=lambda kv: (-kv[1]["wins"], -(kv[1]["savePct"] or 0), kv[1]["goalieFullName"]))
+    nm = lambda pid, key: (SK.get(str(pid)) or GK.get(str(pid)) or {}).get(key) \
+        or full_name.get(pid) or nm_box.get(pid) or ""
+    sk_pool = sorted(((pid, SKT[pid]) for pid in sk_log),
+                     key=lambda kv: (-kv[1]["pts"], -kv[1]["g"], kv[1]["gp"], nm(kv[0], "skaterFullName")))
+    gk_pool = sorted(((pid, GKT[pid]) for pid in gk_log),
+                     key=lambda kv: (-kv[1]["w"], -kv[1]["svp_raw"], nm(kv[0], "goalieFullName")))
     sk_rank = {pid: i + 1 for i, (pid, _) in enumerate(sk_pool)}
     gk_rank = {pid: i + 1 for i, (pid, _) in enumerate(gk_pool)}
 
@@ -514,21 +550,20 @@ def main(label):
     def board(rows, key_tot, key_avg):
         return {"tot": sorted(rows, key=key_tot)[:12], "avg": sorted(rows, key=key_avg)[:12]}
 
-    rows = lambda f: [[pid, home[pid], v[f], r1(v[f] / max(1, v["gamesPlayed"])), v["gamesPlayed"]]
+    rows = lambda f: [[pid, home[pid], v[f], r1(v[f] / max(1, v["gp"])), v["gp"]]
                       for pid, v in sk_pool]
     leaders = {}
-    for key, f in (("pts", "points"), ("g", "goals"), ("a", "assists")):
+    for key, f in (("pts", "pts"), ("g", "g"), ("a", "a")):
         rs = rows(f)
         # A per-game table with no minimum is led by a man with one game and one point,
         # so the average view needs a floor: a quarter of the schedule.
-        floor = max(1, max((v["gamesPlayed"] for _, v in sk_pool), default=0) // 4)
+        floor = max(1, max((v["gp"] for _, v in sk_pool), default=0) // 4)
         leaders[key] = {"tot": sorted(rs, key=lambda r: (-r[2], -r[3], r[0]))[:12],
                         "avg": sorted([r for r in rs if r[4] >= floor],
                                       key=lambda r: (-r[3], -r[2], r[0]))[:12]}
     # Goalies: [id, team, wins, save pct, games played, shutouts]
-    grow = [[pid, home[pid], v["wins"], r3(v["savePct"] or 0), v["gamesPlayed"], v["shutouts"]]
-            for pid, v in gk_pool]
-    gfloor = max(1, max((v["gamesPlayed"] for _, v in gk_pool), default=0) // 2)
+    grow = [[pid, home[pid], v["w"], v["svp"], v["gp"], v["so"]] for pid, v in gk_pool]
+    gfloor = max(1, max((v["gp"] for _, v in gk_pool), default=0) // 2)
     leaders["gk"] = {"w": sorted(grow, key=lambda r: (-r[2], -r[3], r[0]))[:12],
                      "sv": sorted([r for r in grow if r[4] >= gfloor],
                                   key=lambda r: (-r[3], -r[2], r[0]))[:12],
@@ -543,7 +578,7 @@ def main(label):
                 continue
             gm = by_ab[x[1]]["games"][x[2]]
             perf.append({"pts": p, "g": x[4], "a": x[12], "id": pid,
-                         "name": (SK.get(str(pid)) or {}).get("skaterFullName") or nm_box.get(pid),
+                         "name": nm(pid, "skaterFullName"),
                          "team": x[1], "opp": gm["opp"], "h": 1 if gm["ha"] == "H" else 0,
                          "w": 1 if gm["res"] == "W" else 0, "res": gm["res"],
                          "us": gm["us"], "them": gm["them"], "date": gm["date"],
@@ -556,10 +591,11 @@ def main(label):
 
     names = {}
     for pid, v in sk_pool:
-        names[pid] = [v["skaterFullName"], v["positionCode"],
+        names[pid] = [nm(pid, "skaterFullName"),
+                      (SK.get(str(pid)) or {}).get("positionCode") or pos_of.get(pid, ""),
                       jersey_of(pid, teams_of(sk_log[pid])) or ""]
     for pid, v in gk_pool:
-        names[pid] = [v["goalieFullName"], "G", jersey_of(pid, teams_of(gk_log[pid])) or ""]
+        names[pid] = [nm(pid, "goalieFullName"), "G", jersey_of(pid, teams_of(gk_log[pid])) or ""]
 
     champ = next((t["abbr"] for t in out_teams if t["po"] and t["po"]["outcome"] == "CHAMPIONS"), None)
     payload = {"season": label, "champion": champ, "teams": out_teams,
@@ -592,46 +628,50 @@ def main(label):
     if out_teams and out_teams[0]["w"]:
         t = out_teams[0]
         print(f"  best record: {t['name']} {t['w']}-{t['l']}-{t['otl']} {t['pts']} pts")
-    bad = []
-    for x in players + [r for d_ in tails.values() for r in d_.values() if r["kind"] == "s"]:
-        gl = sum(g[3] for g in x["glog"])
-        a = sum(g[4] + g[5] for g in x["glog"])
-        s = SK.get(str(x["id"])) or {}
-        if (len(x["glog"]), gl, sum(x["log"])) != (s.get("gamesPlayed"), s.get("goals"), s.get("points")) \
-                or a != s.get("assists"):
-            bad.append((x["name"], len(x["glog"]), s.get("gamesPlayed"), gl, s.get("goals"),
-                        a, s.get("assists")))
-    print(f"  skaters: {'OK all' if not bad else f'{len(bad)} MISMATCHED of'} "
-          f"{len(sk_pool)} reconcile gp/goals/A1+A2/points to the league's season summary"
-          + (f" -- {bad[:4]}" if bad else ""))
+    # Box totals against the league's summary. A player the summary has not caught up with
+    # (fewer games there, or no row yet) is LAGGING -- normal for a few hours after a night
+    # of games. Only a player with the same games played and different numbers is wrong.
+    lag, bad = [], []
+    for pid, b in SKT.items():
+        s = SK.get(str(pid))
+        if not s or s.get("gamesPlayed", 0) < b["gp"]:
+            lag.append(pid)
+        elif (b["gp"], b["g"], b["a"], b["pts"]) != (s["gamesPlayed"], s["goals"], s["assists"], s["points"]):
+            bad.append((nm(pid, "skaterFullName"), b["gp"], b["g"], b["a"],
+                        s["gamesPlayed"], s["goals"], s["assists"]))
+    print(f"  skaters: {len(SKT) - len(lag) - len(bad)}/{len(SKT)} reconcile games/goals/assists/points "
+          f"to the league's summary; {len(lag)} not in it yet (it updates hours after the games)"
+          + (f"; {len(bad)} MISMATCHED -- {bad[:4]}" if bad else ""))
+    a1bad = [(x["name"], x["a1"] + x["a2"], x["a"]) for x in players if x["a1"] + x["a2"] != x["a"]]
+    if a1bad:
+        print(f"  WARNING primary+secondary assists != assists for {len(a1bad)}: {a1bad[:3]}")
     shot_bad = []
     for x in players:
         s = SK.get(str(x["id"])) or {}
         on = sum(1 for i in range(0, len(x["shots"]), 3)
                  if (B62.index(x["shots"][i]) * 3844 + B62.index(x["shots"][i + 1]) * 62
                      + B62.index(x["shots"][i + 2])) % 3 in (0, 1))
-        if on != s.get("shots"):
-            shot_bad.append((x["name"], on, s.get("shots")))
+        if on != x["sog"]:
+            shot_bad.append((x["name"], on, x["sog"]))
     # The play-by-play and the box score disagree by a shot here and there -- McDavid has
     # three located shots on goal in a game whose box score credits him two. The upstream
     # feed contradicts itself, so the map shows what was located and the card prints the
     # official total; anything beyond a couple of shots would mean OUR bug, not theirs.
     worst = max((abs(a - b) for _, a, b in shot_bad), default=0)
     print(f"  shot maps: {len(players) - len(shot_bad)}/{len(players)} located shots on goal "
-          f"match official SOG exactly, the rest within {worst}"
+          f"match the box-score SOG exactly, the rest within {worst}"
           + (" -- FAIL, too far off" if worst > 3 else " (upstream feed inconsistency)"))
-    gbad = []
-    for x in goalies:
-        s = GK.get(str(x["id"])) or {}
-        sa = sum(g[3] for g in x["glog"])
-        ga = sum(g[4] for g in x["glog"])
-        w = sum(1 for g in x["glog"] if g[5] == "W")
-        if (len(x["glog"]), sa, ga, w) != (s.get("gamesPlayed"), s.get("shotsAgainst"),
-                                          s.get("goalsAgainst"), s.get("wins")):
-            gbad.append((x["name"], len(x["glog"]), s.get("gamesPlayed"), sa, s.get("shotsAgainst"),
-                         ga, s.get("goalsAgainst"), w, s.get("wins")))
-    print(f"  goalies: {'OK all' if not gbad else f'{len(gbad)} MISMATCHED of'} {len(goalies)} "
-          f"reconcile gp/SA/GA/wins" + (f" -- {gbad[:4]}" if gbad else ""))
+    glag, gbad = [], []
+    for pid, b in GKT.items():
+        s = GK.get(str(pid))
+        if not s or s.get("gamesPlayed", 0) < b["gp"]:
+            glag.append(pid)
+        elif (b["gp"], b["sa"], b["ga"], b["sv"], b["w"], b["so"]) != (
+                s["gamesPlayed"], s["shotsAgainst"], s["goalsAgainst"], s["saves"], s["wins"], s["shutouts"]):
+            gbad.append((nm(pid, "goalieFullName"), b["gp"], b["sa"], b["ga"], b["w"], b["so"],
+                         s["gamesPlayed"], s["shotsAgainst"], s["goalsAgainst"], s["wins"], s["shutouts"]))
+    print(f"  goalies: {len(GKT) - len(glag) - len(gbad)}/{len(GKT)} reconcile games/SA/GA/saves/wins/shutouts; "
+          f"{len(glag)} not in the summary yet" + (f"; {len(gbad)} MISMATCHED -- {gbad[:4]}" if gbad else ""))
     drift = 0
     for x in players + goalies:
         for (ti, gi, *_), when in zip(x["glog"], sorted(sk_log.get(x["id"]) or gk_log.get(x["id"]))):
