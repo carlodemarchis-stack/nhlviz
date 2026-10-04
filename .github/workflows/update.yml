@@ -4,8 +4,13 @@
 name: update-season
 on:
   schedule:
-    - cron: "30 7 * * *"     # after the late West Coast games have gone final
-    - cron: "0 14 * * *"     # a second pass for anything the league corrected overnight
+    # GitHub starts scheduled runs late -- the 07:30 slot was firing around 12:40 UTC --
+    # and on the hour is its busiest moment, so these sit at :47. The West Coast games end
+    # about 04:00-05:00 UTC; the first two passes land them by mid-morning in Europe even
+    # with the queue, and the third catches the league's overnight corrections.
+    - cron: "47 4 * * *"
+    - cron: "47 6 * * *"
+    - cron: "47 13 * * *"
   workflow_dispatch:
 permissions:
   contents: write
