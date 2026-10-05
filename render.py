@@ -93,6 +93,10 @@ def social(stem, season, payload, landing=False):
 def one_season(season, seasons):
     payload = json.load(open(os.path.join(DATA, f"cards-{season}.json")))
     payload["seasons"] = seasons
+    # Players whose portrait for this season is in a new kit (img/head/<season>/<id>.webp);
+    # everyone else uses the base portrait. See fetch_images.heads().
+    hp = os.path.join(DATA, f"heads-{season}.json")
+    payload["heads"] = sorted(int(k) for k in json.load(open(hp))) if os.path.exists(hp) else []
 
     build(os.path.join(HERE, "template.html"),
           os.path.join(HERE, f"index-{season}.html"), payload, season,

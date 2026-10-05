@@ -953,7 +953,10 @@ function winColor(t){
   const c = [n>>16, (n>>8)&255, n&255].map(v => Math.min(255, Math.round(v*k + 62)));
   return `rgb(${c.join(',')})`;
 }
-const head  = id => `img/head/${id}.webp`;
+/* A player who changed teams since the base season has this season's portrait in his
+   new kit; the base one stays for the season he wore the old one in. */
+const HEADS = new Set(D.heads || []);
+const head  = id => HEADS.has(+id) ? `img/head/${SEASON}/${id}.webp` : `img/head/${id}.webp`;
 /* "Luka Dončić" -> "L. Dončić". The payload's own short form is folded to ascii, which
    is fine for searching and wrong on a card. */
 const shortName = s => {

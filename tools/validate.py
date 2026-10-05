@@ -39,7 +39,11 @@ def main(label):
     miss = [ab for ab in (t["abbr"] for t in d["teams"])
             if not os.path.exists(os.path.join(ROOT, "img", "crest", f"{ab}.svg"))]
     ids = [p["id"] for p in d["players"] + d["goalies"]] + [r[0] for r in d["tail"]]
-    nohead = [i for i in ids if not os.path.exists(os.path.join(ROOT, "img", "head", f"{i}.webp"))]
+    hp = os.path.join(ROOT, "data", f"heads-{label}.json")
+    alt = set(int(k) for k in json.load(open(hp))) if os.path.exists(hp) else set()
+    nohead = [i for i in ids if not os.path.exists(
+        os.path.join(ROOT, "img", "head", label, f"{i}.webp") if i in alt
+        else os.path.join(ROOT, "img", "head", f"{i}.webp"))]
     print(f"  crests {32 - len(miss)}/32 · headshots {len(ids) - len(nohead)}/{len(ids)}")
     fail += miss + [f"head {i}" for i in nohead]
     if fail:
