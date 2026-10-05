@@ -241,7 +241,50 @@ body.bracket #ctlbar{display:none}
    One bar per team: the points it has, and -- faint, behind -- every point it could still
    reach. The line through each conference is the playoff cut if the season ended today;
    a team whose ghost can no longer reach enough is out, and dims. */
-body.race #wrap{display:flex;flex-direction:column}
+body.race #wrap,body.reg #wrap{display:flex;flex-direction:column}
+/* ---------- the Games view: every game of every team ----------
+   One row per team in standings order, one box per game in calendar order, the
+   opponent's code inside it. Win green, OT/SO loss amber (a point), regulation loss red,
+   each darkened so white letters clear 4.5:1. Boxes only letter-high and centred, so the
+   dark band between rows separates one team's season from the next. */
+.rghead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:6px;flex:0 0 auto}
+.rghead h2{font-size:clamp(17px,1.8vw,24px);font-weight:700;letter-spacing:-.015em}
+.rghead p{font-size:11px;color:var(--dim)}
+.rgkey{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--dim);margin-left:auto}
+.rgkey i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.rggrid{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.rgconf{flex:0 0 auto;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  padding:5px 0 3px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.rgrow,.rgaxis{display:grid;gap:5px;grid-template-columns:16px 19px 40px 30px 62px minmax(0,1fr)}
+.rgrow{flex:1 1 0;min-height:17px;align-items:stretch;font-size:12.5px;line-height:1;
+  font-variant-numeric:tabular-nums}
+.rgrow > span,.rgrow > img,.rgrow > a{align-self:center}
+.rgrow img{width:19px;height:19px;object-fit:contain;background:rgba(255,255,255,.07);border-radius:50%}
+.rgrow .rk{color:var(--dim);text-align:right;font-size:10px}
+.rgrow .ab{font-weight:700;letter-spacing:.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
+.rgrow .ab:hover{text-decoration:underline dotted;text-underline-offset:2px}
+.rgrow.champ .ab{color:var(--gold)}
+.rgrow .pt{text-align:right;font-weight:700}
+.rgrow .rec{color:var(--dim);text-align:right;font-size:11px}
+.rgrow:hover{background:rgba(255,255,255,.03)}
+.rgcells{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));
+  grid-template-rows:minmax(0,1fr);gap:1px;min-width:0;align-items:center}
+.rgrow > .rgcells{align-self:stretch}
+.rgc{display:grid;place-items:center;min-width:0;padding:2px 0;border-radius:2px;
+  font-size:6.5px;line-height:1;font-weight:700;letter-spacing:-.02em;white-space:nowrap;
+  overflow:hidden;color:#fff;font-style:normal}
+.rgc.w{background:color-mix(in srgb,var(--win) 70%,#000)}
+.rgc.o{background:color-mix(in srgb,var(--otl) 62%,#000)}
+.rgc.l{background:color-mix(in srgb,var(--loss) 80%,#000)}
+.rgc.u{background:rgba(150,166,205,.1);color:rgba(232,236,245,.42)}
+/* Point at a team's crest or code and every other row goes quiet. One class on the grid
+   and one on the row, set when the pointer crosses a label -- not per mouse move. */
+.rggrid.focus .rgrow:not(.hot) .rgc{background:rgba(150,166,205,.06);color:rgba(232,236,245,.14)}
+.rgaxis{flex:0 0 auto;margin-bottom:1px}
+.rgaxis .tx{position:relative;height:11px}
+.rgaxis .tx span{position:absolute;transform:translateX(-50%);font-size:9px;color:var(--dim)}
+@media (max-width:1100px){ .rgc{font-size:0} }
+@media (max-width:900px){ body.reg #wrap{display:block} .rggrid,.rgaxis{min-width:900px} }
 .rchead{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:12px}
 .rchead h2{font-size:clamp(17px,1.8vw,24px);font-weight:700;letter-spacing:-.015em}
 .rchead p{font-size:11.5px;color:var(--dim);max-width:110ch;line-height:1.5}
@@ -428,6 +471,9 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
         confirmed a clinched spot.</li>
       <li>The <b>slider</b> replays the race game by game; hover a team for its record, games
         left and its distance from the line.</li>
+      <li><b>Games</b> lays out every game of every team in standings order — green a win,
+        amber an overtime or shootout loss, red a regulation loss, the opponent's code inside.
+        Point at a team to isolate its season; its code opens its card in the film.</li>
       <li><b>Bracket</b> shows the playoffs, round by round, to the Stanley Cup.</li>
     </ul>
     <p><kbd>←</kbd> <kbd>→</kbd> step a game · <kbd>space</kbd> play ·
@@ -523,7 +569,8 @@ function recordAt(t, n){
 
 function draw(){
   if (VIEW === 'bracket') return;      // the bracket owns #wrap while it is up
-  document.getElementById('wrap').innerHTML = raceHtml();
+  FOCUS = null;
+  document.getElementById('wrap').innerHTML = VIEW === 'reg' ? regHtml() : raceHtml();
   gnoLabel();
 }
 
@@ -555,7 +602,8 @@ addEventListener('resize', paintScrub);
 /* Standing rule in this family: a reload lands exactly where you were, never at the
    start, and the address bar is always shareable. */
 function syncHash(){
-  const want = VIEW === 'bracket' ? '#bracket' : `#race/${RACETAB}/${G}`;
+  const want = VIEW === 'bracket' ? '#bracket'
+    : VIEW === 'reg' ? `#reg/${G}` : `#race/${RACETAB}/${G}`;
   if (location.hash !== want) history.replaceState(null, '', want);
   PREF.set('game', G);
   updateSocialMeta();
@@ -584,6 +632,14 @@ function updateSocialMeta(){
       socMeta('agwas:mentions', 'nhl');
       return;
     }
+    if (VIEW === 'reg'){
+      socMeta('agwas:title', `NHL Regular Season, ${SEASON}`);
+      socMeta('agwas:cta', `Every game of the ${SEASON} NHL regular season, team by team`
+        + (G >= CAP ? '' : ` — after game ${G}`) + ' — full interactive experience below');
+      socMeta('agwas:tags', 'nhl dataviz hockey schedule results');
+      socMeta('agwas:mentions', 'nhl');
+      return;
+    }
       socMeta('agwas:title', `NHL Playoff Race, ${SEASON}`);
       socMeta('agwas:cta', `The ${SEASON} NHL playoff race` + (G >= CAP ? '' : ` after game ${G}`)
         + ' — full interactive experience below');
@@ -593,6 +649,8 @@ function updateSocialMeta(){
 }
 function readHash(){
   if ((location.hash || '') === '#bracket') return {view: 'bracket'};
+  const gm = /^#reg\/(\d+)$/.exec(location.hash || '');
+  if (gm) return {view: 'reg', g: +gm[1]};
   // #race/wc/60 -- the tab is optional, so the first race links (#race/60) still open.
   const rm = /^#race\/(?:(wc|div|conf|league)\/)?(\d+)$/.exec(location.hash || '');
   if (rm) return {view: 'race', tab: rm[1], g: +rm[2]};
@@ -958,17 +1016,85 @@ function gnoLabel(){
     ? `game <b>${G}</b> of ${MAXG}` : `<b>${MAXG}</b> games scheduled`;
 }
 
+/* ---------- the regular season, every game ---------- */
+let REGROWS = {};
+function regHtml(){
+  const N = MAXG;
+  REGROWS = {};
+  const ticks = [1, 10, 20, 30, 40, 50, 60, 70, 80].filter(v => v <= N)
+    .map(v => `<span style="left:${((v - .5) / N * 100).toFixed(2)}%">${v}</span>`).join('');
+  const axis = `<div class="rgaxis"><span></span><span></span><span></span>
+    <span class="rk" style="font-size:9px;color:var(--dim);text-align:right">PTS</span>
+    <span style="font-size:9px;color:var(--dim);text-align:right">W-L-OT</span>
+    <div class="tx">${ticks}</div></div>`;
+  const row = (r, rank) => {
+    const games = counting(r.t);
+    REGROWS[r.t.abbr] = {r, games};
+    const champ = r.t.po && r.t.po.outcome === 'CHAMPIONS' && SEASON_DONE && G >= MAXG;
+    const cells = Array.from({length: N}, (_, i) => {
+      const g = games[i];
+      if (!g) return '<span class="rgc u"></span>';
+      // Past the slider, a game has not happened yet -- whatever the final result was.
+      const k = i < G && g.res ? (g.res === 'W' ? 'w' : g.res === 'OTL' ? 'o' : 'l') : 'u';
+      return `<span class="rgc ${k}" data-i="${i}">${esc(g.opp || '')}</span>`;
+    }).join('');
+    return `<div class="rgrow${champ ? ' champ' : ''}" data-ab="${r.t.abbr}">
+      <span class="rk">${rank}</span>
+      <img src="${crest(r.t.abbr)}" alt="" loading="lazy">
+      <a class="ab" href="index-${SEASON}.html#team-${r.t.abbr}"
+        title="${esc(r.t.name)} — open the team card">${esc(r.t.abbr)}${champ ? '★' : ''}</a>
+      <span class="pt">${r.pts}</span>
+      <span class="rec">${r.w}-${r.l}-${r.o}</span>
+      <span class="rgcells" style="--n:${N}">${cells}</span></div>`;
+  };
+  // Same order as the race's Conference tab at the same game, so switching views never
+  // reshuffles the teams.
+  const body = [['Eastern', 'Eastern Conference'], ['Western', 'Western Conference']].map(([k, title]) =>
+    `<div class="rgconf">${title}</div>` + raceConf(k, G).rows.map((r, i) => row(r, i + 1)).join('')
+  ).join('');
+  const any = TEAMS.some(t => counting(t).some(g => g.res));
+  return `<div class="rghead">
+      <h2>The regular season${!any ? '' : SEASON_DONE && G >= MAXG ? '' : G >= CAP ? ', so far'
+        : `, after game ${G}`}</h2>
+      <p>${any ? 'Every game, every team — in standings order.'
+        : `Every game on the ${esc(SEASON)} schedule, waiting to be played.`}</p>
+      <div class="rgkey">
+        <span><i style="background:color-mix(in srgb,var(--win) 70%,#000)"></i>win</span>
+        <span><i style="background:color-mix(in srgb,var(--otl) 62%,#000)"></i>OT/SO loss</span>
+        <span><i style="background:color-mix(in srgb,var(--loss) 80%,#000)"></i>loss</span>
+        <span><i style="background:rgba(150,166,205,.18)"></i>to play</span>
+        <span>letters = the opponent</span>
+      </div>
+    </div>${axis}<div class="rggrid">${body}</div>`;
+}
+
+/* Hovering a team's crest or code in the Games view isolates its row. */
+let FOCUS = null, LASTCELL = null;
+function focusTeam(ab){
+  if (ab === FOCUS) return;
+  const grid = document.querySelector('.rggrid');
+  FOCUS = ab;
+  if (!grid) return;
+  grid.querySelectorAll('.hot').forEach(e => e.classList.remove('hot'));
+  grid.classList.toggle('focus', !!ab);
+  if (!ab) return;
+  const row = grid.querySelector(`.rgrow[data-ab="${ab}"]`);
+  if (row) row.classList.add('hot');
+}
+
 /* ---------- which view ---------- */
 // A browser that last had the towers open remembers 'towers'; that view is gone.
-let VIEW = PREF.get('view', 'race') === 'bracket' ? 'bracket' : 'race';
+const VIEWS = [['race', 'Race'], ['reg', 'Games'], ['bracket', 'Bracket']];
+let VIEW = VIEWS.some(v => v[0] === PREF.get('view', 'race')) ? PREF.get('view', 'race') : 'race';
 function drawViews(){
-  seg('views', [['race', 'Race'], ['bracket', 'Bracket']], VIEW, v => {
+  seg('views', VIEWS, VIEW, v => {
     VIEW = v; PREF.set('view', v); drawViews(); applyView();
   });
 }
 function applyView(){
   document.body.classList.toggle('bracket', VIEW === 'bracket');
   document.body.classList.toggle('race', VIEW === 'race');
+  document.body.classList.toggle('reg', VIEW === 'reg');
   if (VIEW === 'bracket') document.getElementById('wrap').innerHTML = bracketHtml();
   else draw();
   syncHash();
@@ -1043,6 +1169,23 @@ document.getElementById('wrap').addEventListener('mousemove', e => {
     }
     return placeTip(e);
   }
+  const cell = e.target.closest('.rgc[data-i]');
+  if (cell && cell === LASTCELL) return placeTip(e);
+  LASTCELL = cell;
+  if (cell){
+    const hit = REGROWS[cell.closest('.rgrow').dataset.ab];
+    const g = hit && hit.games[+cell.dataset.i];
+    if (!g){ tip.classList.remove('on'); return; }
+    const t = hit.r.t, o = TEAMS.find(x => x.abbr === g.opp) || {nick: g.opp};
+    const played = +cell.dataset.i < G && g.res;
+    const c = g.res === 'W' ? 'var(--win)' : g.res === 'OTL' ? 'var(--otl)' : 'var(--loss)';
+    tip.innerHTML = `<div class="t">${esc(t.abbr)} · game ${+cell.dataset.i + 1} · ${WHEN(g.date)}</div>
+      <b>${g.ha === 'H' ? 'vs' : 'at'} ${esc(o.nick)}</b>${played
+        ? ` · <b style="color:${c}">${g.res === 'OTL' ? 'L' : g.res} ${g.us}–${g.them}${g.end ? ' ' + g.end : ''}</b>`
+        : ' · to play'}
+      ${g.venue ? `<div class="t" style="margin-top:3px">${esc(g.venue)}</div>` : ''}`;
+    return placeTip(e);
+  }
   const rr = e.target.closest('.rcrow[data-ab]');
   if (rr){
     const r = RACEROWS[rr.dataset.ab]; if (!r) return;
@@ -1058,7 +1201,14 @@ document.getElementById('wrap').addEventListener('mousemove', e => {
   }
   tip.classList.remove('on');
 });
-document.getElementById('wrap').addEventListener('mouseleave', () => tip.classList.remove('on'));
+document.getElementById('wrap').addEventListener('mouseleave', () => {
+  tip.classList.remove('on'); focusTeam(null); LASTCELL = null;
+});
+document.getElementById('wrap').addEventListener('mouseover', e => {
+  if (VIEW !== 'reg') return;
+  const lab = e.target.closest('.rgrow img, .rgrow .ab');
+  focusTeam(lab ? lab.closest('.rgrow').dataset.ab : null);
+});
 
 addEventListener('keydown', e => {
   if (e.key === 'Escape') return closeMods();
@@ -1078,7 +1228,7 @@ addEventListener('keydown', e => {
   const h = readHash();
   // #bracket is the whole state that view has; #race/<game> names the race and its game.
   if (h && h.view === 'bracket'){ VIEW = 'bracket'; drawViews(); return applyView(); }
-  if (h){ VIEW = 'race'; PREF.set('view', VIEW); drawViews();
+  if (h){ VIEW = h.view === 'reg' ? 'reg' : 'race'; PREF.set('view', VIEW); drawViews();
     if (h.tab){ RACETAB = h.tab; PREF.set('racetab', h.tab); }
     setG(h.g);
   } else {

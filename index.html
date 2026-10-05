@@ -2710,7 +2710,11 @@ film.addEventListener('touchend', e => {
   // A section can be linked by name -- index-2025-26.html#players -- so the towers page
   // can jump straight into one without knowing where its cards start.
   const named = SECTIONS.find(x => secSlug(x.name) === raw.toLowerCase());
+  // #team-COL opens that team's card -- the Season page's Games view links here, and it
+  // cannot know where a team sits in the deck.
+  const tm = /^team-([A-Z]{2,3})$/i.exec(raw);
   if (named) i = named.at;
+  else if (tm && CARD_OF_TEAM[tm[1].toUpperCase()] != null) i = CARD_OF_TEAM[tm[1].toUpperCase()];
   else if (h >= 1 && h <= CARDS.length) i = h - 1;
   // Past the deck is the tail: #236 is an unlisted card, and it is the only way in.
   else if (h > CARDS.length && h <= TOTAL) k = h - CARDS.length - 1;
