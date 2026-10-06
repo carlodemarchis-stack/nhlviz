@@ -1238,7 +1238,10 @@ addEventListener('keydown', e => {
   if (h && h.view === 'bracket'){ VIEW = 'bracket'; drawViews(); return applyView(); }
   if (h){ VIEW = h.view === 'reg' ? 'reg' : 'race'; PREF.set('view', VIEW); drawViews();
     if (h.tab){ RACETAB = h.tab; PREF.set('racetab', h.tab); }
-    setG(h.g);
+    // In a season in progress every load opens at the latest game, whatever number the
+    // address carries -- a reload must never show the standings of an earlier night.
+    // The view and the tab are kept; only a finished season honours a game in the link.
+    setG(SEASON_DONE ? h.g : CAP);
   } else {
     let g = CAP;
     // A season in progress always reopens at its latest game -- a remembered number cannot
@@ -1252,6 +1255,20 @@ addEventListener('keydown', e => {
   // Paints the remembered view -- the race, or the bracket over it.
   applyView();
 })();
+
+/* Arriving any other way must land on the latest game too: the Back button can restore
+   this page from the browser's memory exactly as it was left (pageshow, persisted), and
+   a link that only changes the #... does not reload it at all (hashchange). */
+addEventListener('pageshow', e => { if (e.persisted && !SEASON_DONE) setG(CAP); });
+addEventListener('hashchange', () => {
+  const h = readHash();
+  if (!h) return;
+  if (h.view === 'bracket'){ if (VIEW !== 'bracket'){ VIEW = 'bracket'; drawViews(); applyView(); } return; }
+  const v = h.view === 'reg' ? 'reg' : 'race';
+  if (h.tab) RACETAB = h.tab;
+  if (v !== VIEW){ VIEW = v; PREF.set('view', VIEW); drawViews(); applyView(); }
+  setG(SEASON_DONE ? h.g : CAP);
+});
 </script>
 </body>
 </html>
