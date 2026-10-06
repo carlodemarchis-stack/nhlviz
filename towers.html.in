@@ -602,10 +602,16 @@ addEventListener('resize', paintScrub);
 /* Standing rule in this family: a reload lands exactly where you were, never at the
    start, and the address bar is always shareable. */
 function syncHash(){
+  /* At the latest game the link and the memory say "latest", not a number: in a season
+     under way, game 4 today is game 5 tomorrow, and a remembered 4 reopened the race and
+     the Games view a night behind the standings. A game number is kept only when you
+     have moved the slider back -- that is a request for that moment of the season. */
+  const now = G >= CAP;
   const want = VIEW === 'bracket' ? '#bracket'
-    : VIEW === 'reg' ? `#reg/${G}` : `#race/${RACETAB}/${G}`;
+    : VIEW === 'reg' ? (now ? '#reg' : `#reg/${G}`)
+    : (now ? `#race/${RACETAB}` : `#race/${RACETAB}/${G}`);
   if (location.hash !== want) history.replaceState(null, '', want);
-  PREF.set('game', G);
+  PREF.set('game', now ? 'latest' : G);
   updateSocialMeta();
 }
 
@@ -649,11 +655,12 @@ function updateSocialMeta(){
 }
 function readHash(){
   if ((location.hash || '') === '#bracket') return {view: 'bracket'};
-  const gm = /^#reg\/(\d+)$/.exec(location.hash || '');
-  if (gm) return {view: 'reg', g: +gm[1]};
+  const gm = /^#reg(?:\/(\d+))?$/.exec(location.hash || '');
+  if (gm) return {view: 'reg', g: gm[1] ? +gm[1] : CAP};
   // #race/wc/60 -- the tab is optional, so the first race links (#race/60) still open.
-  const rm = /^#race\/(?:(wc|div|conf|league)\/)?(\d+)$/.exec(location.hash || '');
-  if (rm) return {view: 'race', tab: rm[1], g: +rm[2]};
+  // #race/wc is the latest game; #race/wc/40 a moment in the season; #race/40 an old link.
+  const rm = /^#race(?:\/(wc|div|conf|league))?(?:\/(\d+))?$/.exec(location.hash || '');
+  if (rm) return {view: 'race', tab: rm[1], g: rm[2] ? +rm[2] : CAP};
   // The towers are gone; a link made for them (#conf/82, #league/wins/82) opens the race
   // at the same game rather than breaking.
   const m = /^#([a-z]+)\/(?:[a-z]+\/)?(\d+)$/.exec(location.hash || '');
@@ -848,7 +855,8 @@ function bracketHtml(){
 
 /* ---------- the playoff race ---------- */
 const DIVTAG = {Atlantic: 'A', Metropolitan: 'M', Central: 'C', Pacific: 'P'};
-const byPts = (a, b) => b.pts - a.pts || b.rw - a.rw || b.w - a.w || a.played - b.played
+// The league's order: points, then FEWER games played, then regulation wins, then wins.
+const byPts = (a, b) => b.pts - a.pts || a.played - b.played || b.rw - a.rw || b.w - a.w
   || a.t.nick.localeCompare(b.t.nick);
 let RACEROWS = {};
 
@@ -1233,7 +1241,11 @@ addEventListener('keydown', e => {
     setG(h.g);
   } else {
     let g = CAP;
-    try { const saved = +PREF.get('game', CAP); if (saved >= 1 && saved <= CAP) g = saved; }
+    // A season in progress always reopens at its latest game -- a remembered number cannot
+    // tell "where I left the slider" from "what was the latest then". A finished season
+    // has no such ambiguity, so there the remembered game is honoured.
+    try { const saved = PREF.get('game', 'latest');
+          if (saved !== 'latest' && SEASON_DONE && +saved >= 1 && +saved <= CAP) g = +saved; }
     catch(e){}
     setG(g);
   }
