@@ -260,6 +260,12 @@ a{color:inherit}
    13px at this size and a full-width arc gives 18 per game, so they fit at desktop width
    and are dropped below 1100px rather than rendered as mush. */
 .arcopp{display:flex;gap:1px;padding-left:34px;margin-top:4px}
+.arcopp .xl{border-bottom:none}
+.arcopp .xl:hover{text-decoration:underline}
+/* The per-game hover columns over the season arc, on the svg's own grid. */
+.arcgrid{position:absolute;left:34px;right:0;top:0;bottom:0;z-index:1;display:flex}
+.arcgrid i{flex:1 1 0;min-width:0;cursor:pointer}
+.arcgrid i:hover{background:rgba(255,255,255,.08)}
 .arcopp i{flex:1 1 0;min-width:0;font-style:normal;font-size:6.5px;line-height:1;
   font-weight:700;text-align:center;letter-spacing:-.02em;white-space:nowrap;overflow:hidden}
 @media (max-width:1100px){ .arcopp{display:none} }
@@ -1034,11 +1040,13 @@ const bump = r => r === 'W' ? 1 : r === 'L' ? -1 : 0;
 
 function arcSvg(t){
   const games = t.games;
-  const pts = []; let bal = 0, hi = 0, lo = 0;
-  games.forEach(g => {
+  // pts[k] is the balance after the k-th game PLAYED; at[k] is where that game sits in the
+  // schedule, which is what places it on the x axis.
+  const pts = [], at = []; let bal = 0, hi = 0, lo = 0;
+  games.forEach((g, i) => {
     if (!g.res) return;
     bal += bump(g.res);
-    pts.push(bal); hi = Math.max(hi, bal); lo = Math.min(lo, bal);
+    pts.push(bal); at.push(i); hi = Math.max(hi, bal); lo = Math.min(lo, bal);
   });
   if (!pts.length) return `<div class="box" style="color:var(--dim);font-size:12px">
     Not played yet — ${games.length} games scheduled.</div>`;
@@ -1047,10 +1055,16 @@ function arcSvg(t){
   const SC = Math.max(6, Math.ceil(Math.max(Math.abs(hi), Math.abs(lo), 1) / 5) * 5);
   const STEP = SC <= 12 ? 2 : SC <= 30 ? 5 : 10;
   const y = v => mid - (v / SC) * (mid - 6);
-  const x = i => i / Math.max(1, pts.length - 1) * W;
-  let d = `M0 ${y(pts[0]).toFixed(1)}`;
-  pts.forEach((v, i) => { d += ` L${x(i).toFixed(1)} ${y(v).toFixed(1)}`; });
-  const area = `${d} L${W} ${mid} L0 ${mid} Z`;
+  /* On the SCHEDULE's axis, one step per game, from .500 at the start: the line stops at
+     the latest game played and the rest of the season is empty road ahead. Spreading the
+     games played across the whole width made four games look like a season, out of line
+     with the result ticks and opponents underneath, which are per scheduled game. */
+  const tw = W / games.length;
+  const xg = i => (i + .5) * tw;              // centre of scheduled game i
+  const x = k => xg(at[k]);                   // the k-th game played
+  let d = `M0 ${mid}`;
+  pts.forEach((v, k) => { d += ` L${x(k).toFixed(1)} ${y(v).toFixed(1)}`; });
+  const area = `${d} L${x(pts.length - 1).toFixed(1)} ${mid} L0 ${mid} Z`;
 
   let grid = '';
   for (let v = STEP; v <= SC; v += STEP){
@@ -1064,7 +1078,6 @@ function arcSvg(t){
 
   // One tick per game under the plot: a win high, a loss low, an OT loss in between in
   // amber -- it sits between the two because that is what it is worth.
-  const tw = W / games.length;
   const ticks = games.map((g, i) => {
     const xx = (i*tw).toFixed(2), ww = Math.max(1, tw-.7).toFixed(2);
     if (!g.res) return `<rect x="${xx}" y="${H+14}" width="${ww}" height="7" rx="1.5"
@@ -1083,7 +1096,7 @@ function arcSvg(t){
     if (y(-v) < H - 10) labels += lbl(-v, '−' + v);
   }
   const mark = (v, cls, side) => {
-    const f = pts.length > 1 ? pts.indexOf(v) / (pts.length - 1) : 0;
+    const f = xg(at[pts.indexOf(v)]) / W;
     const top = y(v) / TOT * 100;
     const up = side === 'up' ? top >= 10 : top > 78;
     const tx = f < .05 ? '0' : f > .95 ? '-100%' : '-50%';
@@ -1094,11 +1107,16 @@ function arcSvg(t){
   if (hi > 0) labels += mark(hi, 'hi', 'up');
   if (lo < 0) labels += mark(lo, 'lo', 'down');
 
+  // Each opponent code opens that team's card.
   const oppRow = `<div class="arcopp">${games.map(g => g.opp
-    ? `<i style="color:${readable(winColor(TEAMS[g.opp] || {}), 3.2)}">${esc(g.opp)}</i>`
+    ? `<i style="color:${readable(winColor(TEAMS[g.opp] || {}), 3.2)}">${tlink(g.opp, esc(g.opp))}</i>`
     : '<i></i>').join('')}</div>`;
+  // One invisible column per scheduled game over the whole chart: hover (or tap) for the
+  // game -- the same panel the season barcode shows -- with the column lit.
+  const hit = `<div class="arcgrid">${games.map((g, i) =>
+    `<i data-bc="${t.abbr}:${i}"></i>`).join('')}</div>`;
 
-  return `<div class="arcbox">${labels}<svg class="arc" viewBox="0 0 ${W} ${TOT}" preserveAspectRatio="none">
+  return `<div class="arcbox">${labels}${hit}<svg class="arc" viewBox="0 0 ${W} ${TOT}" preserveAspectRatio="none">
     <defs>
       <clipPath id="up${t.abbr}"><rect x="0" y="0" width="${W}" height="${mid}"/></clipPath>
       <clipPath id="dn${t.abbr}"><rect x="0" y="${mid}" width="${W}" height="${H}"/></clipPath>
@@ -1118,8 +1136,9 @@ function arcSvg(t){
     <span><i class="dot" style="background:var(--win)"></i>win <b>+1</b></span>
     <span><i class="dot" style="background:var(--otl)"></i>OT/SO loss <b>±0</b></span>
     <span><i class="dot" style="background:var(--loss)"></i>loss <b>−1</b></span>
-    <span>peak <b>${sgn(hi)}</b> · low <b>${sgn(lo)}</b> · finished <b>${sgn(pts[pts.length-1])}</b></span>
-    <span style="margin-left:auto;color:var(--dim)">${games.length} games · scale set by this club, ±${SC}</span>
+    <span>peak <b>${sgn(hi)}</b> · low <b>${sgn(lo)}</b> · ${pts.length < games.length
+      ? `now <b>${sgn(pts[pts.length-1])}</b> after ${pts.length}` : `finished <b>${sgn(pts[pts.length-1])}</b>`}</span>
+    <span style="margin-left:auto;color:var(--dim)">${pts.length} of ${games.length} games played · hover a game · scale set by this club, ±${SC}</span>
   </div>`;
 }
 
