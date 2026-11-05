@@ -435,7 +435,7 @@ kbd{font:inherit;font-size:11px;background:var(--pan);border:1px solid var(--lin
   <div class="seg" id="seasons"></div>
   <div class="grow"></div>
   <span class="lab">View</span><div class="seg" id="views"></div>
-  <div id="credit">Produced with passion by <b>Carlo De Marchis</b> ·
+  <div id="credit">Produced with passion by <a href="https://aguywithascarf.com/"><b>Carlo De Marchis</b></a> ·
     <a href="#" onclick="openMod('cmodal');return false">Credits</a><a class="agwas-ver" data-agwas-ver="nhl" href="https://dataviz.aguywithascarf.com/releases/#nhl" target="_blank" rel="noopener"></a></div>
 </div>
 
